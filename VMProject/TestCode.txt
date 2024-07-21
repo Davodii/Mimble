@@ -1,0 +1,58 @@
+
+# variables and literals / constants
+a = 1.10
+a = [1, 2, 3]
+a = [1..10]
+a = "123"
+a = false
+
+# Arithmetic
+b = 1 + 2
+b = 3 * 4 + (5 * 7) / a
+c = "Hello " + "World!"
+
+# Booleans
+b = true and not a
+b = a or b
+b = a == "some string"
+
+# Conditional / control-flow
+if a or b do
+    a = a + 1
+end
+
+if a do
+    b = b - 1
+else if a == false do
+    b = b + 1
+else 
+    b = 123
+end
+
+# Loops
+while a do
+    a = a + 1
+end
+
+for a in ["a", "b", "c"] do
+    b = b + a
+end
+
+for a in [1..20:3] :
+    # a will go through 1, 4, 7, 10, 13, 16, 19
+    b = a
+end
+
+while true:
+    if a == false do
+        break;
+    else do
+        continue
+    end
+end
+    
+
+# Functions
+function fun(param) does
+    return param + "oh my word"
+end
