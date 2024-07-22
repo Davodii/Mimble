@@ -1,0 +1,111 @@
+--- Language Grammar Rules ---
+
+program         : statement_list EOF
+
+statement_list  : statement_list statement
+                | statement
+                
+statement       : expression_statement
+                | if_statement
+                | for_statement
+                | while_statement
+                | func_declaration
+                | var_declaration
+
+=== COMMONS ===
+
+identifier      : LETTER (LETTER | DIGIT | UNDERSCORE)*
+number          : DIGIT+
+                | DIGIT* '.' DIGIT+
+
+block           : DO NEWLINE statement_list END
+
+NEWLINE         : '\n'
+LETTER          : 'a'-'z' | 'A'-'Z'
+DIGIT           : '0'-'9'
+UNDERSCORE      : '_'
+
+=== EXPRESSIONS ===
+
+expression_statement : expression NEWLINE
+
+expression      : binary_op
+                | unary_op
+                | identifier
+                | number
+                | array_expression
+                | LPAREN expression RPAREN
+                | function_call
+
+binary_op       : arithmetic_op
+                | comparison_op
+
+arithmetic_op   : expression '+' expression
+                | expression '-' expression
+                | expression '*' expression
+                | expression '/' expression
+
+comparison_op   : expression '<' expression
+                | expression '<=' expression
+                | expression '>' expression
+                | expression '>=' expression
+                | expression '==' expression
+                | expression '!=' expression
+                | expression OR expression
+                | expression AND expression
+
+unary_op        : NOT expression
+
+array_expression: array_literal
+                | range_expression
+
+array_elements  : array_elements COMMA expression
+                | expression
+                | empty
+
+array_literal   : LBRACKET array_elements RBRACKET
+
+range           : number DDOT number
+
+range_stepped   : range COLON number
+                | range
+
+range_expression: LBRACKET range_stepped RBRACKET
+
+=== IF ===
+
+if_statement    : IF expression block elif_statements else_statements
+
+elif_statements : ELIF expression block elif_statements
+                | empty
+
+else_statements : ELSE block
+                | empty
+
+=== LOOPS ===
+
+while_statement : WHILE expression block
+
+for_statement   : FOR identifier IN expression block
+
+=== FUNCTIONS ===
+
+func_declaration: FUNCTION identifier LPAREN parameter_list RPAREN DOES NEWLINE statement_list END
+
+parameter_list  : identifier_list
+                | empty
+
+identifier_list : identifier_list COMMA identifier
+                | identifier
+                   
+expression_list : expression_list COMMA expression
+                | expression
+                         
+argument_list   : expression_list
+                | empty
+                
+function_call   : identifier LPAREN argument_list RPAREN
+
+=== VARIABLES ===
+ASSIGN          : '='
+var_declaration : identifier ASSIGN expression NEWLINE

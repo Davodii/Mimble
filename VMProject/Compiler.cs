@@ -14,6 +14,7 @@ public class Compiler
 
     private void Advance() { 
         _previous = _current;
+        
         for (;;) {
             _current = _scanner.ScanToken();
             
@@ -30,9 +31,14 @@ public class Compiler
         // Set up the scanner
         Scanner scanner = new Scanner(source);
         
-        // Continue advancing through tokens until an error occurs
-        // or an EOF token is found.
         
+        
+        Advance();
+
+        for (;;)
+        {
+        }
+
         // Pass down any errors
     }
 }

@@ -23,7 +23,7 @@ end
 
 if a do
     b = b - 1
-else if a == false do
+elif a == false do
     b = b + 1
 else 
     b = 123
