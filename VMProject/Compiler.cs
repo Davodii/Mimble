@@ -17,6 +17,8 @@ public class Compiler
     private Token _previous = null;
     private Token _current = null;
     private Chunk _currentChunk = null;
+
+    private List<Token> _locals;
     
     
     #region Chunk
@@ -75,6 +77,31 @@ public class Compiler
         if (Match(TokenType.Function))
         {
             FunctionDeclaration();
+        }
+        else if (Match(TokenType.Identifier))
+        {
+            // ! Identifier
+            // a = ...      - Variable Initialization
+            // a[i] = ...   - Array indexing and initialization 
+
+            Token identifier = _previous;
+            Value identifierValue = new Value(identifier.GetValue(), ValueType.VariableIdentifier);
+
+            int localIndex = _currentChunk.GetLocalIndex(identifierValue);
+
+            if (localIndex == -1)
+            {
+                localIndex = _currentChunk.AddLocal(identifierValue);
+            }
+            
+            Console.WriteLine(_current);
+            if (Match(TokenType.Equal))
+            {
+                // Initialize
+                Expression();
+                EmitByte(Instruction.StoreVar);
+                EmitByte((byte)localIndex);
+            }
         }
         else
         {
@@ -257,7 +284,6 @@ public class Compiler
         
         //TODO: end the scope
     }
-
     
     #endregion
     
@@ -333,9 +359,14 @@ public class Compiler
         if (_current.GetType() == TokenType.Minus)
         {
             // ! Unary Minus
-            Advance();
-            ComputeAtom();
-            EmitByte(Instruction.Negate);
+            Unary(Instruction.Negate);
+            return;
+        }
+
+        if (_current.GetType() == TokenType.Not)
+        {
+            // ! Unary not
+            Unary(Instruction.Not);
             return;
         }
         
@@ -362,6 +393,13 @@ public class Compiler
         }
         
         Advance();
+    }
+
+    private void Unary(Instruction instruction)
+    {
+        Advance();
+        ComputeAtom();
+        EmitByte(instruction);
     }
 
     private void Literal()
@@ -397,15 +435,18 @@ public class Compiler
             val = new Value(_current.GetValue(), ValueType.String);
         }
 
-        int valIndex = _currentChunk.AddConstant(val);
+        int valIndex = _currentChunk.AddLocal(val);
         
-        EmitByte(Instruction.Constant);
+        EmitByte(Instruction.LoadConstant);
         EmitByte((byte)valIndex);
     }
 
     private void Identifier()
     {
         //TODO: handle identifiers
+        // ! types of identifiers
+        // get a vairable
+        // get index 
     }
 
     private void HandleOperator(TokenType op)
@@ -426,10 +467,10 @@ public class Compiler
                 EmitByte(Instruction.Divide);
                 break;
             case TokenType.And:
+                EmitByte(Instruction.And);
                 break;
             case TokenType.Or:
-                break;
-            case TokenType.Not:
+                EmitByte(Instruction.Or);
                 break;
             default:
                 // ! Should never be here
@@ -464,6 +505,9 @@ public class Compiler
         
         // Initialize the bytecode chunk
         _currentChunk = new Chunk();
+        
+        //TODO: Remove this
+        _locals = new List<Token>();
         
         // Parse the source text and compile to the chunk
         Advance();

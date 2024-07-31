@@ -9,9 +9,11 @@ public enum Instruction
     Null,
     False,
     True,
-    Constant,
+    LoadConstant,       // LoadConst [ ConstIndex ]
     
     // BINARY
+    And,
+    Or,
     Equal,
     Greater,
     Less,
@@ -30,10 +32,15 @@ public enum Instruction
     Loop,
     
     //TODO: handle arrays and other things idk
+    // VARIABLES
+    StoreVar,           // StoreVar [ VarIndex ]
+    LoadVar,            // LoadVar [ VarIndex ]
+    
     
     // FUNCTIONS
     Call,
     Return,
     
+    //TODO: remove this v
     End
 }

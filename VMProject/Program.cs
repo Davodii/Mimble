@@ -2,7 +2,7 @@
 
 class Program
 {
-    private static string testString = "\"hello\" + 12\n";
+    private static string testString = "a = 12\n";
     
     static void Main(string[] args)
     {

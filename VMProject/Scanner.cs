@@ -232,7 +232,9 @@ public class Scanner
         // Check literals and identifiers
         if (IsAlpha(c)) return Identifier();
         if (IsDigit(c)) return Number();
-        
+
+        // TODO: check this is necessary
+        Advance();
         
         // Check other characters
         switch (c)

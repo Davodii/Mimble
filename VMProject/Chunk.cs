@@ -11,9 +11,7 @@ public class Chunk
     private int _codeCount;
     
     // Store constant values found within this chunk
-    private Value[] _constants;
-    private int _constantsCapacity;
-    private int _constantsCount;
+    private List<Value> _locals;
 
     //TODO: Add some way to store the current line number
     // Use a delta-offset table
@@ -25,10 +23,7 @@ public class Chunk
         _codeCount = 0;
         _codeCapacity = InitSize;
         _code = new byte[_codeCapacity];
-
-        _constantsCount = 0;
-        _constantsCapacity = 256;
-        _constants = new Value[_constantsCapacity];
+        _locals = new List<Value>();
 
     }
 
@@ -47,28 +42,30 @@ public class Chunk
         _codeCount++;
     }
 
-    public int AddConstant(Value value)
+    public int AddLocal(Value value)
     {
-        if (_constantsCount >= _constantsCapacity)
-        {
-            //TODO: throw error
-            return -1;
-        }
 
-        _constants[_constantsCount] = value;
+        _locals.Add(value);
         //TODO: check this works... 
-        return _constantsCount++;
+        return _locals.Count - 1;
     }
 
-    public Value GetConstant(int index)
+    public Value GetLocal(int index)
     {
-        if (index >= _constantsCount)
+        if (index >= _locals.Count)
         {
             // ! out of range exception
             return null;
         }
 
-        return _constants[index];
+        return _locals[index];
+    }
+    
+    
+    public int GetLocalIndex(Value constant)
+    {
+        //TODO: check that this will work if constant is not found
+        return _locals.IndexOf(constant);
     }
 
     public int GetCodeCount()
@@ -108,9 +105,9 @@ public class Chunk
                 case Instruction.True:
                     Console.WriteLine("[ true ]");
                     break;
-                case Instruction.Constant:
+                case Instruction.LoadConstant:
                     i++;
-                    Console.WriteLine($"[ {_code[i]}: {GetConstant(_code[i]).GetValue()}]");
+                    Console.WriteLine($"[ {_code[i]}: {GetLocal(_code[i]).GetValue()}]");
                     break;
                 case Instruction.Add:
                     Console.WriteLine("Add");

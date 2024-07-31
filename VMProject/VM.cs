@@ -12,14 +12,17 @@ public class VM
     private Chunk _current;
     private Stack<Value> _valueStack;
 
+    private Dictionary<Value, Value> _globals;
+
     public VM()
     {
         _valueStack = new Stack<Value>();
+        _globals = new Dictionary<Value, Value>();
         _ip = 0;
         _current = null;
     }
 
-    private void AdvanceIP()
+    private void IncrementIP()
     {
         _ip++;
     }
@@ -40,12 +43,13 @@ public class VM
         return _valueStack.Pop();
     }
     
+    
     #region Utility Functions
 
     private double AsNumber(Value val)
     {
         // TODO: check the number is not null
-        if (val.GetType() != ValueType.Number)
+        if (val.GetValueType() != ValueType.Number)
         {
             //TODO: error
             return -0;
@@ -56,7 +60,7 @@ public class VM
 
     private string AsString(Value val)
     {
-        if (val.GetType() != ValueType.String)
+        if (val.GetValueType() != ValueType.String)
         {
             //TODO: error
             return "\0";
@@ -68,7 +72,7 @@ public class VM
     private string ToString(Value val)
     {
         // Convert the value to a string 
-        switch (val.GetType())
+        switch (val.GetValueType())
         {
             case ValueType.Null:
                 return "null";
@@ -87,12 +91,11 @@ public class VM
     
     #endregion
     
-    
     #region Binary Operations
 
     private bool AreNumbers(Value val1, Value val2)
     {
-        return val1.GetType() == ValueType.Number && val2.GetType() == ValueType.Number;
+        return val1.GetValueType() == ValueType.Number && val2.GetValueType() == ValueType.Number;
     }
     
     private void Add()
@@ -100,7 +103,7 @@ public class VM
         Value val1 = Pop();
         Value val2 = Pop();
 
-        if (val1.GetType() == ValueType.String || val2.GetType() == ValueType.String)
+        if (val1.GetValueType() == ValueType.String || val2.GetValueType() == ValueType.String)
         {
             // Perform string concatenation
             string result = ToString(val2) + ToString(val1);
@@ -176,7 +179,7 @@ public class VM
     private void Negate()
     {
         Value val = Pop();
-        if (val.GetType() != ValueType.Number)
+        if (val.GetValueType() != ValueType.Number)
         {
             // ! Error
             return;
@@ -209,10 +212,10 @@ public class VM
                 case Instruction.True:
                     Push(new Value(true, ValueType.Boolean));
                     break;
-                case Instruction.Constant:
+                case Instruction.LoadConstant:
                     // Increment the _ip
-                    AdvanceIP();
-                    Value constant = _current.GetConstant(_current.GetByte(_ip));
+                    IncrementIP();
+                    Value constant = _current.GetLocal(_current.GetByte(_ip));
                     Push(constant);
                     break;
                 case Instruction.Add:
@@ -230,9 +233,8 @@ public class VM
                 case Instruction.Negate:
                     Negate();
                     break;
-                case Instruction.End:
-                    return;
                 case Instruction.Equal:
+                    // Handle variable definition and / or initialization
                     break;
                 case Instruction.Greater:
                     break;
@@ -250,11 +252,31 @@ public class VM
                     break;
                 case Instruction.Return:
                     break;
+                case Instruction.And:
+                    break;
+                case Instruction.Or:
+                    break;
+                case Instruction.StoreVar:
+                    // Pop the top of the stack and store it into the variable given by the second 
+                    Value val = Pop();
+                    IncrementIP();
+                    
+                    // IP now points to the index of the variable name
+                    byte index = _current.GetByte(_ip);
+                    Value varIdentifier = _current.GetLocal(index);
+                    
+                    // Store the value inside the identifier in the list
+                    _globals.Add(varIdentifier, val);
+                    break;
+                case Instruction.LoadVar:
+                    break;
+                case Instruction.End:
+                    return;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
             
-            AdvanceIP();
+            IncrementIP();
         }
     }
 
@@ -267,6 +289,12 @@ public class VM
         Interpret();
         
         // Top of stack is result
-        Console.WriteLine("Top of stack: " + ToString(Pop()));
+        //Console.WriteLine("Top of stack: " + ToString(_valueStack.Peek()));
+        
+        // Stored variables:
+        foreach (var entry in _globals)
+        {
+            Console.WriteLine($"Variable \"{entry.Key.GetValue()}\": {entry.Value.GetValue()}");
+        }
     }
 }
