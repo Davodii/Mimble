@@ -22,7 +22,7 @@ public class Scanner
     private char Advance()
     {
         _current++;
-        return _source[_current];
+        return _source[_current - 1];
     }
 
     private char Peek()
@@ -68,7 +68,7 @@ public class Scanner
         //TODO: check this function actually works
         
         // Check from _start for rest to see if the keyword matches
-        if (_current - _start != rest.Length || 
+        if (_current - _start - offset != rest.Length || 
             _start + rest.Length + offset > _source.Length) 
             return TokenType.Identifier;
         

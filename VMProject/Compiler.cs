@@ -17,8 +17,7 @@ public class Compiler
     private Token _previous = null;
     private Token _current = null;
     private Chunk _currentChunk = null;
-
-    private List<Token> _locals;
+    private List<Token> _identifiers;
     
     
     #region Chunk
@@ -32,6 +31,28 @@ public class Compiler
     private void EmitByte(byte val)
     {
         _currentChunk.Write(val);
+    }
+
+    private int EmitJump(Instruction op)
+    {
+        // JumpIfFalse [ Instruction to jump to ]
+        
+        EmitByte(op);
+        EmitByte(val:0);
+        EmitByte(val:0);
+
+        // Return index of the JumpIfFalse instruction
+        return _currentChunk.GetCodeCount() - 2;
+    }
+
+    private void PatchJump(int offset)
+    {
+        // Get the jump instruction 
+        int jump = _currentChunk.GetCodeCount() - offset - 2;
+        
+        // Store the jump in the next two bytes (after the jump instruction)
+        _currentChunk.Write((byte)((jump & 0xFF00) >> 8), offset);
+        _currentChunk.Write((byte)(jump & 0xFF), offset + 1);
     }
     
     #endregion
@@ -78,31 +99,6 @@ public class Compiler
         {
             FunctionDeclaration();
         }
-        else if (Match(TokenType.Identifier))
-        {
-            // ! Identifier
-            // a = ...      - Variable Initialization
-            // a[i] = ...   - Array indexing and initialization 
-
-            Token identifier = _previous;
-            Value identifierValue = new Value(identifier.GetValue(), ValueType.VariableIdentifier);
-
-            int localIndex = _currentChunk.GetLocalIndex(identifierValue);
-
-            if (localIndex == -1)
-            {
-                localIndex = _currentChunk.AddLocal(identifierValue);
-            }
-            
-            Console.WriteLine(_current);
-            if (Match(TokenType.Equal))
-            {
-                // Initialize
-                Expression();
-                EmitByte(Instruction.StoreVar);
-                EmitByte((byte)localIndex);
-            }
-        }
         else
         {
             Statement();
@@ -139,12 +135,52 @@ public class Compiler
         {
             Block();
         }
+        else if (Match(TokenType.Identifier))
+        {
+            AssignStatement();
+            
+        }
         else
         {
             ExpressionStatement();
         }
     }
 
+    private void AssignStatement()
+    {
+        //TODO: change the signature of this function, it irks me
+        
+        // ! Identifier
+        // a = ...      - Variable Initialization
+        // a[i] = ...   - Array indexing and initialization 
+
+        // TODO: Remove everything here and make pretty / better
+        Token identifier = _previous;
+        Value identifierValue = new Value(identifier.GetValue(), ValueType.VariableIdentifier);
+
+        int localIndex = _currentChunk.GetLocalIndex(identifierValue);
+
+        if (localIndex == -1)
+        {
+            localIndex = _currentChunk.AddLocal(identifierValue);
+        }
+        
+        // Handle everything after the identifier
+        if (Match(TokenType.SqLeftBrace))
+        {
+            // Array accessing
+            
+            // Match an equal after the end of the array indexingf
+        }
+        else if (Match(TokenType.Equal))
+        {
+            // Initialize
+            Expression();
+            EmitByte(Instruction.StoreVar);
+            EmitByte((byte)localIndex);
+        }
+    }
+    
     private void ReturnStatement()
     {
         //TODO: check not at the top level of the program and 
@@ -217,27 +253,34 @@ public class Compiler
 
     private void IfStatement()
     {
-        // expression
-        // block
-            // elif statements
-            // else statements
         Expression();
+        
+        // Start jump if false
+        int jumpIf = EmitJump(Instruction.JumpIfFalse);
+        // Pop the expression from the stack
         EmitByte(Instruction.Pop);
         
-        // Jump to elif if false
-        Block();
+        Statement();
+
+        int elseJump = EmitJump(Instruction.Jump);
         
-        if (Check(TokenType.Elif))
+        // Jump to elif if false
+        PatchJump(jumpIf);
+        // Pop the expression from the stack
+        EmitByte(Instruction.Pop);
+        
+        // TODO: implement Elif statements
+        // if (Check(TokenType.Elif))
+        // {
+        //     ElifStatements();
+        // }
+
+        if (Match(TokenType.Else))
         {
-            ElifStatements();
+            Statement();
         }
 
-        if (Check(TokenType.Else))
-        {
-            ElseStatements();
-        }
-        
-        //TODO: emit the correct bytes for the if statement
+        PatchJump(elseJump);
     }
 
     private void ElifStatements()
@@ -245,8 +288,10 @@ public class Compiler
         // elif expression block
         // elif statements
         Expression();
-        EmitByte(Instruction.Pop);
+        
         // Jump past statement if false
+        int jump = EmitJump(Instruction.JumpIfFalse);
+        EmitByte(Instruction.Pop);
         
         Statement();
         
@@ -257,19 +302,6 @@ public class Compiler
         }
         
         // Should be good rn
-    }
-
-    private void ElseStatements()
-    {
-        Match(TokenType.Else);
-        
-        Expression();
-        // Jump if false
-        
-        EmitByte(Instruction.Pop);
-        Statement();
-        
-        // Jump to here
     }
 
     private void Block(bool afterFunctionDefinition = false)
@@ -289,19 +321,16 @@ public class Compiler
     
     #region Expressions
     
-    private enum Precedence
-    {
-        None = 0,       // 
-        Term = 1,       // + -
-        Factor = 2,     // * /
-    }
 
     private Dictionary<TokenType, (bool, int)> _operatorInfo = new Dictionary<TokenType, (bool, int)>()
     {
-        { TokenType.Plus, (false, (int)Precedence.Term)},
-        { TokenType.Minus, (false, (int)Precedence.Term)},
-        { TokenType.Star, (false, (int)Precedence.Factor)},
-        { TokenType.Slash, (false, (int)Precedence.Factor)}
+        { TokenType.Or, (false, 0)},
+        { TokenType.And, (false, 1)},
+        { TokenType.Plus, (false, 2)},
+        { TokenType.Minus, (false,2)},
+        { TokenType.Star, (false, 3)},
+        { TokenType.Slash, (false, 3)},
+        { TokenType.Not, (true, 4)}
     };
     
     private void Expression(int minPrecedence = 0)
@@ -346,11 +375,7 @@ public class Compiler
             Advance();
             Expression();
             
-            //TODO: can replace this with a Consume() call
-            if (_current.GetType() != TokenType.RightParen)
-            {
-                //! error, all groupings must be closed off.
-            }
+            Consume(TokenType.RightParen, "All groupings must be closed off.");
             
             Advance();
             return;
@@ -443,15 +468,15 @@ public class Compiler
 
     private void Identifier()
     {
-        //TODO: handle identifiers
-        // ! types of identifiers
-        // get a vairable
-        // get index 
+        //TODO: handle identifiers inside of an expression 
+        
+        // a
+        // a[...]
+        // a(...)
     }
 
     private void HandleOperator(TokenType op)
     {
-        // Handle the given operator
         switch (op)
         {
             case TokenType.Plus:
@@ -471,6 +496,23 @@ public class Compiler
                 break;
             case TokenType.Or:
                 EmitByte(Instruction.Or);
+                break;
+            case TokenType.EqualEqual:
+                EmitByte(Instruction.Equal);
+                break;
+            case TokenType.Greater:
+                EmitByte(Instruction.Greater);
+                break;
+            case TokenType.GreaterEqual:
+                EmitByte(Instruction.Less);
+                EmitByte(Instruction.Not);
+                break;
+            case TokenType.Less:
+                EmitByte(Instruction.Less);
+                break;
+            case TokenType.LessEqual:
+                EmitByte(Instruction.Greater);
+                EmitByte(Instruction.Not);
                 break;
             default:
                 // ! Should never be here
@@ -507,7 +549,7 @@ public class Compiler
         _currentChunk = new Chunk();
         
         //TODO: Remove this
-        _locals = new List<Token>();
+        _identifiers = new List<Token>();
         
         // Parse the source text and compile to the chunk
         Advance();

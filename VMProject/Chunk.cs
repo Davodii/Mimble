@@ -42,6 +42,17 @@ public class Chunk
         _codeCount++;
     }
 
+    public void Write(byte data, int offset)
+    {
+        if (offset >= _codeCount)
+        {
+            // TODO: error
+            return;
+        }
+        
+        _code[offset] = data;
+    }
+
     public int AddLocal(Value value)
     {
 

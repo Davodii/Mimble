@@ -22,17 +22,6 @@ public class VM
         _current = null;
     }
 
-    private void IncrementIP()
-    {
-        _ip++;
-    }
-
-    private void SetIP(int ip)
-    {
-        // Useful for jumps
-        _ip = ip;
-    }
-
     private void Push(Value value)
     {
         _valueStack.Push(value);
@@ -42,7 +31,25 @@ public class VM
     {
         return _valueStack.Pop();
     }
+
+    private Value Peek()
+    {
+        return _valueStack.Peek();
+    }
     
+    private byte ReadByte()
+    {
+        return _current.GetByte(_ip++);
+    }
+    private short ReadShort()
+    {
+        // read the next two bytes (aaaa bbbb)
+        //                           b1   b2
+        byte b1 = ReadByte();
+        byte b2 = ReadByte();
+        
+        return (short)((b1 << 8) | b2);
+    }
     
     #region Utility Functions
 
@@ -87,6 +94,11 @@ public class VM
         
         // Should never reach here
         return "ERROR";
+    }
+
+    private bool IsFalsey(Value val)
+    {
+        return val.GetValueType() == ValueType.Boolean && (bool)val.GetValue() == false;
     }
     
     #endregion
@@ -189,14 +201,14 @@ public class VM
         Push(new Value(result, ValueType.Number));
     }
     #endregion
-
+    
     private void Interpret()
     {
         for (;;)
         {
             // Given a current chunk, interpret the code
             // Read the current instruction
-            Instruction instruction = (Instruction)_current.GetByte(_ip);
+            Instruction instruction = (Instruction)ReadByte();
 
             switch (instruction)
             {
@@ -213,41 +225,103 @@ public class VM
                     Push(new Value(true, ValueType.Boolean));
                     break;
                 case Instruction.LoadConstant:
-                    // Increment the _ip
-                    IncrementIP();
                     Value constant = _current.GetLocal(_current.GetByte(_ip));
                     Push(constant);
                     break;
-                case Instruction.Add:
+                case Instruction.Add: // +
                     Add();
                     break;
-                case Instruction.Subtract:
+                case Instruction.Subtract: // -
                     Subtract();
                     break;
-                case Instruction.Multiply:
+                case Instruction.Multiply: // *
                     Multiply();
                     break;
-                case Instruction.Divide:
+                case Instruction.Divide: // /
                     Divide();
                     break;
-                case Instruction.Negate:
+                case Instruction.Negate: // -
                     Negate();
                     break;
-                case Instruction.Equal:
-                    // Handle variable definition and / or initialization
+                case Instruction.Equal: // ==
+                {
+                    Value val1 = Pop();
+                    Value val2 = Pop();
+                    
+                    Push(new Value(val1.Equals(val2), ValueType.Boolean));
+                    
                     break;
-                case Instruction.Greater:
+                }
+                case Instruction.Greater: // >
+                {
+                    Value val1 = Pop();
+                    Value val2 = Pop();
+
+                    if (!AreNumbers(val1, val2))
+                    {
+                        // TODO: error
+                    }
+
+                    bool greater = (double)val2.GetValue() > (double)val1.GetValue();
+                    Push(new Value(greater, ValueType.Boolean));
                     break;
-                case Instruction.Less:
+                }
+                case Instruction.Less: // <
+                {
+                    Value val1 = Pop();
+                    Value val2 = Pop();
+
+                    if (!AreNumbers(val1, val2))
+                    {
+                        // TODO: error
+                    }
+
+                    bool greater = (double)val2.GetValue() < (double)val1.GetValue();
+                    Push(new Value(greater, ValueType.Boolean));
                     break;
-                case Instruction.Not:
+                }
+                case Instruction.Not: // not
+                {
+                    Value val = Pop();
+
+                    if (val.GetValueType() != ValueType.Boolean)
+                    {
+                        // TODO: Error
+                    }
+
+                    bool not = !(bool)val.GetValue();
+                    Push(new Value(not, ValueType.Boolean));
                     break;
+                }
                 case Instruction.Jump:
+                {
+                    // Read the next two bytes
+                    short offset = ReadShort();
+
+                    // Add the offset to the ip
+                    _ip += offset;
                     break;
+                }
                 case Instruction.JumpIfFalse:
+                {
+                    // Check if the top value is falsey
+                    if (IsFalsey(Peek()))
+                    {
+                        // Jump
+                        short offset = ReadShort();
+                        _ip += offset;
+                    }
+
                     break;
+                }
                 case Instruction.Loop:
+                {
+                    short offset = ReadShort();
+                    
+                    // Subtract offset from the ip (going back up the code
+                    _ip -= offset;
                     break;
+                }
                 case Instruction.Call:
                     break;
                 case Instruction.Return:
@@ -257,17 +331,18 @@ public class VM
                 case Instruction.Or:
                     break;
                 case Instruction.StoreVar:
+                {
                     // Pop the top of the stack and store it into the variable given by the second 
                     Value val = Pop();
-                    IncrementIP();
-                    
+
                     // IP now points to the index of the variable name
-                    byte index = _current.GetByte(_ip);
+                    byte index = ReadByte();
                     Value varIdentifier = _current.GetLocal(index);
-                    
+
                     // Store the value inside the identifier in the list
                     _globals.Add(varIdentifier, val);
                     break;
+                }
                 case Instruction.LoadVar:
                     break;
                 case Instruction.End:
@@ -275,8 +350,6 @@ public class VM
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-            
-            IncrementIP();
         }
     }
 
