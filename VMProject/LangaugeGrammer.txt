@@ -2,15 +2,14 @@
 
 program         : statement_list EOF
 
-statement_list  : statement_list statement
-                | statement
+statement_list  : statement statement_list
+                | e
                 
 statement       : expression_statement
                 | if_statement
                 | for_statement
                 | while_statement
                 | func_declaration
-                | var_declaration
 
 === COMMONS ===
 
@@ -28,6 +27,8 @@ UNDERSCORE      : '_'
 === EXPRESSIONS ===
 
 expression_statement : expression NEWLINE
+                     | var_declaration
+                     | 
 
 expression      : binary_op
                 | unary_op
@@ -86,6 +87,9 @@ else_statements : ELSE block
 
 while_statement : WHILE expression block
 
+for_expression  : array_expression
+                | IDENTIFIER
+
 for_statement   : FOR identifier IN expression block
 
 === FUNCTIONS ===
@@ -107,5 +111,5 @@ argument_list   : expression_list
 function_call   : identifier LPAREN argument_list RPAREN
 
 === VARIABLES ===
-ASSIGN          : '='
+
 var_declaration : identifier ASSIGN expression NEWLINE

@@ -6,12 +6,12 @@ public class Scanner
      * Take source code and produce Tokens on demand
      */
 
-    private readonly char[] _source;
+    private readonly string _source;
     private int _start;
     private int _current;
     private int _lines;
 
-    public Scanner(char[] source)
+    public Scanner(string source)
     {
         _source = source;
         _start = 0;
@@ -38,6 +38,8 @@ public class Scanner
 
     private bool IsAtEnd()
     {
+        if (_current >= _source.Length) return true;
+        
         // Check if the end of a string is encountered
         return _source[_current] == '\0';
     }
@@ -140,8 +142,9 @@ public class Scanner
     {
         // Keep advancing until a non-alpha or digit is found
         while (IsAlpha(Peek()) || IsDigit(Peek())) Advance();
+
         
-        return new Token(IdentifierType(), _start, _current - _start, _lines);
+        return MakeToken(IdentifierType());
     }
 
     private Token Number()
@@ -162,6 +165,10 @@ public class Scanner
 
     private Token SString()
     {
+        // Still on "
+        Advance();
+        _start = _current;
+        
         while (Peek() != '"' && !IsAtEnd())
         {
             if (Peek() == '\n') _lines++;
@@ -171,9 +178,11 @@ public class Scanner
         //TODO: parse error, unterminated string.
         if (IsAtEnd()) return null;
         
+        Token token =  MakeToken(TokenType.String);
         // Closing quote
         Advance();
-        return MakeToken(TokenType.String);
+
+        return token;
     }
     
     private void SkipWhitespace()
@@ -198,25 +207,32 @@ public class Scanner
     private Token MakeToken(TokenType type)
     {
         // Make everything inside _previous to _current a token with the correct TokenType
-        Token token = new Token(type, _start, _current - _start, _lines);
+        string value = _source.Substring(_start, _current - _start);
+        
+        Token token = new Token(type, _start, value, _lines);
+        _current++;
         _start = _current;
 
         return token;
     }
     
+    
     public Token ScanToken()
     {
+        if (IsAtEnd()) return MakeToken(TokenType.Eof);
+        
         // Skip whitespace
         SkipWhitespace();
         _start = _current;
 
-        if (IsAtEnd()) return MakeToken(TokenType.Eof);
 
-        char c = Advance();
+        char c = _source[_current];
+        
         
         // Check literals and identifiers
         if (IsAlpha(c)) return Identifier();
         if (IsDigit(c)) return Number();
+        
         
         // Check other characters
         switch (c)
@@ -251,6 +267,6 @@ public class Scanner
         
         // Unexpected token if here
         //TODO: throw a parse error, no valid token was found
-        return new Token(TokenType.Error, _start, _current, _lines);
+        return new Token(TokenType.Error, _start, "", _lines);
     }
 }

@@ -1,15 +1,15 @@
 namespace VMProject;
 
-public class Token(TokenType type, int start, int length, int line)
+public class Token(TokenType type, int start, string value, int line)
 {
     public int GetStart()
     {
         return start;
     }
 
-    public int GetLength()
+    public string GetValue()
     {
-        return length;
+        return value;
     }
 
     public new TokenType GetType()
@@ -20,5 +20,10 @@ public class Token(TokenType type, int start, int length, int line)
     public int GetLine()
     {
         return line;
+    }
+
+    public override string ToString()
+    {
+        return "line " + line + ": " + type + ": " + value;
     }
 }

@@ -38,8 +38,8 @@ public enum TokenType
     
     // KEYWORDS
     And, Or, Not, True, False,
-    If, Else, While, For, In,
-    Do, Does, End, Break,
+    If, Elif, Else, While, For, 
+    In, Do, Does, End, Break,
     Continue, Function, Return
     
     //TODO: Complete this list
