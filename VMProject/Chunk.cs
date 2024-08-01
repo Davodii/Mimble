@@ -100,6 +100,8 @@ public class Chunk
 
     public void PrintChunk()
     {
+        //TODO: make this actually usable
+        
         for (int i = 0; i < _codeCount; i++)
         {
             switch ((Instruction)_code[i])
@@ -148,6 +150,8 @@ public class Chunk
                 case Instruction.Jump:
                     break;
                 case Instruction.JumpIfFalse:
+                    Console.WriteLine("Jump if false");
+                    i += 2;
                     break;
                 case Instruction.Loop:
                     break;
@@ -158,8 +162,19 @@ public class Chunk
                 case Instruction.End:
                     Console.WriteLine("End");
                     return;
+                case Instruction.And:
+                case Instruction.Or:
+                case Instruction.StoreVar:
+                    Console.WriteLine("Store var");
+                    i++;
+                    break;
+                case Instruction.LoadVar:
+                    Console.WriteLine("Load var");
+                    i++;
+                    break;
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    Console.WriteLine("Unexpected instruction / value: " + i);
+                    break;
             }
         }
     }

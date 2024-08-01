@@ -138,7 +138,6 @@ public class Compiler
         else if (Match(TokenType.Identifier))
         {
             AssignStatement();
-            
         }
         else
         {
@@ -170,7 +169,7 @@ public class Compiler
         {
             // Array accessing
             
-            // Match an equal after the end of the array indexingf
+            // Match an equal after the end of the array indexing
         }
         else if (Match(TokenType.Equal))
         {
@@ -257,7 +256,7 @@ public class Compiler
         
         // Start jump if false
         int jumpIf = EmitJump(Instruction.JumpIfFalse);
-        // Pop the expression from the stack
+        // Pop the expression from the stack if the expression is true
         EmitByte(Instruction.Pop);
         
         Statement();
@@ -438,8 +437,6 @@ public class Compiler
         {
             EmitByte(Instruction.True);
         }
-        
-        Advance();
     }
 
     private void Constant()

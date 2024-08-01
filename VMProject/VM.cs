@@ -225,7 +225,7 @@ public class VM
                     Push(new Value(true, ValueType.Boolean));
                     break;
                 case Instruction.LoadConstant:
-                    Value constant = _current.GetLocal(_current.GetByte(_ip));
+                    Value constant = _current.GetLocal(ReadByte());
                     Push(constant);
                     break;
                 case Instruction.Add: // +
@@ -310,6 +310,10 @@ public class VM
                         // Jump
                         short offset = ReadShort();
                         _ip += offset;
+                    }
+                    else
+                    {
+                        _ip += 2;
                     }
 
                     break;
