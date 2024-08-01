@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Runtime.Intrinsics.X86;
 
 namespace VMProject;
@@ -8,18 +9,16 @@ public class VM
      * Perform interpreting for any passed in chunks of code.
      */
 
-    private int _ip; // Instruction pointer to current bytecode instruction
-    private Chunk _current;
     private Stack<Value> _valueStack;
-
-    private Dictionary<Value, Value> _globals;
-
+    private Stack<CallFrame> _frames;
+    private CallFrame _currentFrame;
+    
     public VM()
     {
         _valueStack = new Stack<Value>();
-        _globals = new Dictionary<Value, Value>();
-        _ip = 0;
-        _current = null;
+        _frames = new Stack<CallFrame>();
+        
+        // TODO: get the first callFrame
     }
 
     private void Push(Value value)
@@ -41,6 +40,7 @@ public class VM
     {
         return _current.GetByte(_ip++);
     }
+    
     private short ReadShort()
     {
         // read the next two bytes (aaaa bbbb)
