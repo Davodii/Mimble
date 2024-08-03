@@ -13,46 +13,52 @@ public class Compiler
      * Use an LALR parser to parse the input and create the necessary bytecode 
      */
 
+    // ! Parsing
     private Scanner _scanner = null;
     private Token _previous = null;
     private Token _current = null;
-    private Chunk _currentChunk = null;
-    private List<Token> _identifiers;
     
+    // ! Compiling
+    private Function a;
+
+    private Stack<Function> _functions;
+
+    private Function CurrentFunction()
+    {
+        return _functions.Peek();
+    }
     
-    #region Chunk
+    #region Writing
 
     private void EmitByte(Instruction op)
     {
         // Write the op to the chunk
-        _currentChunk.Write((byte)op);
+        CurrentFunction().Chunk.Write((byte)op);
     }
 
     private void EmitByte(byte val)
     {
-        _currentChunk.Write(val);
+        CurrentFunction().Chunk.Write(val);
     }
 
     private int EmitJump(Instruction op)
     {
-        // JumpIfFalse [ Instruction to jump to ]
-        
         EmitByte(op);
         EmitByte(val:0);
         EmitByte(val:0);
 
         // Return index of the JumpIfFalse instruction
-        return _currentChunk.GetCodeCount() - 2;
+        return CurrentFunction().Chunk.GetCodeCount() - 2;
     }
 
     private void PatchJump(int offset)
     {
         // Get the jump instruction 
-        int jump = _currentChunk.GetCodeCount() - offset - 2;
+        int jump = CurrentFunction().Chunk.GetCodeCount() - offset - 2;
         
         // Store the jump in the next two bytes (after the jump instruction)
-        _currentChunk.Write((byte)((jump & 0xFF00) >> 8), offset);
-        _currentChunk.Write((byte)(jump & 0xFF), offset + 1);
+        CurrentFunction().Chunk.Write(offset, (byte)((jump & 0xFF00) >> 8));
+        CurrentFunction().Chunk.Write(offset + 1, (byte)(jump & 0xFF));
     }
     
     #endregion
@@ -137,7 +143,7 @@ public class Compiler
         }
         else if (Match(TokenType.Identifier))
         {
-            AssignStatement();
+            Identifier();
         }
         else
         {
@@ -145,39 +151,92 @@ public class Compiler
         }
     }
 
-    private void AssignStatement()
+    private void Identifier()
     {
         //TODO: change the signature of this function, it irks me
         
         // ! Identifier
         // a = ...      - Variable Initialization
         // a[i] = ...   - Array indexing and initialization 
+        // Function call
 
-        // TODO: Remove everything here and make pretty / better
-        Token identifier = _previous;
-        Value identifierValue = new Value(identifier.GetValue(), ValueType.VariableIdentifier);
+        // Get the identifier as a string
+        // Store the string in the current chunk's constants value
 
-        int localIndex = _currentChunk.GetLocalIndex(identifierValue);
+        Token identifier = _current;
+        int indexAsConstant = CurrentFunction().Chunk.GetConstantIndex(identifier);
 
-        if (localIndex == -1)
+        if (indexAsConstant == -1)
         {
-            localIndex = _currentChunk.AddLocal(identifierValue);
+            // Add the identifier to the current chunk's constants
+            indexAsConstant =
+                CurrentFunction().Chunk.AddConstant(new Value(identifier.GetValue(), ValueType.Identifier));
         }
-        
-        // Handle everything after the identifier
+
+        // TODO: check if we are accessing an index in the array 
+        if (Check(TokenType.LeftParen))
+        {
+            // Function call
+            // TODO: create a function to handle function calls for here and inside HandleIdentifier()
+            
+            Advance();
+            return;
+        }
+
         if (Match(TokenType.SqLeftBrace))
         {
-            // Array accessing
-            
-            // Match an equal after the end of the array indexing
+            // Array initialization
         }
-        else if (Match(TokenType.Equal))
+        
+        if (Match(TokenType.Equal))
         {
-            // Initialize
+            // Assign statement
             Expression();
             EmitByte(Instruction.StoreVar);
-            EmitByte((byte)localIndex);
+            EmitByte((byte)indexAsConstant);
         }
+        
+        Advance();
+    }
+
+    private void FunctionCall()
+    {
+        // Current token is the function identifier
+        Token identifier = _current;
+        
+        // Check the current identifier exists, or, add as constant
+        int functionIndex = CurrentFunction().Chunk.GetConstantIndex(identifier);
+        if (functionIndex == -1)
+        {
+            functionIndex = CurrentFunction().Chunk.AddConstant(new Value(identifier.GetValue(), ValueType.Identifier));
+        }
+        
+        Consume(TokenType.LeftParen, "Expect '(' after function identifier.");
+        
+        // Create a new function object
+        int argumentCount = 0;
+        
+        if (!Check(TokenType.RightParen))
+        {
+            // Skip expressions and all that
+            do
+            {
+                // Compute expression
+                Expression();
+                argumentCount++;
+            } while (Match(TokenType.Comma));
+        }
+        
+        Consume(TokenType.RightParen, "Expect ')' after function call.");
+        
+        // Load the function onto the stack
+        EmitByte(Instruction.LoadVar);
+        EmitByte((byte)functionIndex);
+        
+        // Execute the function
+        EmitByte(Instruction.Call);
+        EmitByte((byte)argumentCount);
+        
     }
     
     private void ReturnStatement()
@@ -209,12 +268,48 @@ public class Compiler
 
     private void FunctionDeclaration()
     {
-        return;
         // Get the identifier
         // )
         // identifiers separated by colons
         // ) 
         // block
+        
+        Token identifier = _current;
+        int argumentCount = 0;
+
+        _functions.Push(new Function(identifier.GetValue(), new Chunk()));
+        Function newFunction = _functions.Peek();
+        
+        // ! Begin a new scope
+        // ! Might not need to do this for here since a function has its own environmnet anyway
+        // BeginScope();
+        
+        Consume(TokenType.LeftParen, "Expect '(' after function declaration.");
+        
+        if (!Check(TokenType.RightParen))
+        {
+            do
+            {
+                argumentCount++;
+                // ! Define variable to the function's constants
+                // Identifier();
+            } while (Match(TokenType.Comma));
+        }
+
+        newFunction.Arity = argumentCount;
+        Consume(TokenType.RightParen, "Expect ')' after parameters.");
+        
+        // ! Begin block
+        Block(true);
+        
+        // Handle function code and what not
+        // EndScope();
+        
+        // add the function to the current chunk's constants
+        Value functionValue = new Value(_functions.Pop(), ValueType.Function);
+        int functionIndex = CurrentFunction().Chunk.AddConstant(functionValue);
+        EmitByte(Instruction.DefFunction);
+        EmitByte((byte)functionIndex);
     }
 
     private void WhileStatement()
@@ -309,11 +404,19 @@ public class Compiler
         // does ... end for function definitions
         Match(afterFunctionDefinition ? TokenType.Does : TokenType.Do);
         
-        //TODO: start a new scope for the variables
-        
         Statement();
         
-        //TODO: end the scope
+        Match(TokenType.End);
+    }
+
+    private void BeginScope()
+    {
+        EmitByte(Instruction.BeginScope);
+    }
+
+    private void EndScope()
+    {
+        EmitByte(Instruction.EndScope);
     }
     
     #endregion
@@ -383,14 +486,14 @@ public class Compiler
         if (_current.GetType() == TokenType.Minus)
         {
             // ! Unary Minus
-            Unary(Instruction.Negate);
+            HandleUnary(Instruction.Negate);
             return;
         }
 
         if (_current.GetType() == TokenType.Not)
         {
             // ! Unary not
-            Unary(Instruction.Not);
+            HandleUnary(Instruction.Not);
             return;
         }
         
@@ -398,17 +501,17 @@ public class Compiler
             _current.GetType() == TokenType.Null)
         {
             // ! literal
-            Literal();
+            HandleLiteral();
         }
         else if (_current.GetType() == TokenType.Number || _current.GetType() == TokenType.String)
         {
             // ! Handle the constant 
-            Constant();
+            HandleConstant();
         }
         else if (_current.GetType() == TokenType.Identifier)
         {
             // ! get local / global variable
-            Identifier();
+            HandleIdentifier();
         }
         else
         {
@@ -419,34 +522,26 @@ public class Compiler
         Advance();
     }
 
-    private void Unary(Instruction instruction)
+    private void HandleUnary(Instruction instruction)
     {
         Advance();
         ComputeAtom();
         EmitByte(instruction);
     }
 
-    private void Literal()
+    private void HandleLiteral()
     {
         // Handle false and true literals
-        if (_current.GetValue() == "false")
-        {
-            EmitByte(Instruction.False);
-        }
-        else 
-        {
-            EmitByte(Instruction.True);
-        }
+        EmitByte(_current.GetValue() == "false" ? Instruction.False : Instruction.True);
     }
 
-    private void Constant()
+    private void HandleConstant()
     {
         // Handle constants stored inside the chunk
         // Emit a byte to the stack 
 
-        Value val = new Value(null, ValueType.Null);
+        Value val;
         
-        // Current is a constant value
         if (_current.GetType() == TokenType.Number)
         {
             double asDouble = double.Parse(_current.GetValue());
@@ -456,20 +551,44 @@ public class Compiler
         {
             val = new Value(_current.GetValue(), ValueType.String);
         }
+        else
+        {
+            // ! Error
+            return;
+        }
 
-        int valIndex = _currentChunk.AddLocal(val);
+        int index = CurrentFunction().Chunk.AddConstant(val);
         
         EmitByte(Instruction.LoadConstant);
-        EmitByte((byte)valIndex);
+        EmitByte((byte)index);
     }
 
-    private void Identifier()
+    private void HandleIdentifier()
     {
         //TODO: handle identifiers inside of an expression 
         
         // a
         // a[...]
         // a(...)
+
+        Token identifier = _current;
+        
+        // TODO: compare between arrays, variables and functions
+        
+        // Get the index of the identifier inside the current chunk's constants
+        int index = CurrentFunction().Chunk.GetConstantIndex(identifier);
+
+        if (index == -1)
+        {
+            // Add the constant to the constants list
+            index = CurrentFunction().Chunk.AddConstant(new Value(identifier.GetValue(), ValueType.Identifier));
+        }
+        
+        // Get the identifier and push onto the stack
+        EmitByte(Instruction.LoadVar);
+        
+        // TODO: maybe introduce a LoadConstant 2x instruction where two bytes are used as the index
+        EmitByte((byte)index);
     }
 
     private void HandleOperator(TokenType op)
@@ -537,24 +656,20 @@ public class Compiler
     
     #endregion
 
-    public Chunk Compile(string source)
+    public Function Compile(string source)
     {
         // Initialize the scanner
         _scanner = new Scanner(source);
-        
-        // Initialize the bytecode chunk
-        _currentChunk = new Chunk();
-        
-        //TODO: Remove this
-        _identifiers = new List<Token>();
+
+        Function main = new Function("main", new Chunk());
         
         // Parse the source text and compile to the chunk
         Advance();
         
         Declaration();
         
-        EmitByte(Instruction.End);
+        ReturnStatement();
         
-        return _currentChunk;
+        return main;
     }
 }

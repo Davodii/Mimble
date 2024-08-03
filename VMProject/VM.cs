@@ -10,8 +10,8 @@ public class VM
      */
 
     private Stack<Value> _valueStack;
-    private Stack<CallFrame> _frames;
-    private CallFrame _currentFrame;
+    private Stack<CallFrame> _frames; // the bottom-most frame will be the "global" function
+    
     
     public VM()
     {
@@ -19,6 +19,11 @@ public class VM
         _frames = new Stack<CallFrame>();
         
         // TODO: get the first callFrame
+    }
+
+    private Function CurrentFunction()
+    {
+        return _frames.Peek().Function;
     }
 
     private void Push(Value value)
@@ -37,8 +42,8 @@ public class VM
     }
     
     private byte ReadByte()
-    {
-        return _current.GetByte(_ip++);
+    { 
+        return _frames.Peek().ReadByte();
     }
     
     private short ReadShort()
@@ -202,7 +207,57 @@ public class VM
     }
     #endregion
     
-    private void Interpret()
+    #region Functions
+
+    private void FunctionDefinition()
+    {
+        // Current instruction is DefFunction
+        byte functionIndex = ReadByte();
+        Value value = CurrentFunction().Chunk.GetConstant(functionIndex);
+        Function function = (Function)(value.GetValue());
+        
+        /*// Check if the current function is defined anywhere else in the environment
+        if (_frames.Peek().Environment.Defined(function.Identifier))
+        {
+            // The function is already defined
+            // ! Error
+            Console.WriteLine("--- Function already defined");
+            return;
+        }
+
+        Environment environment = new Environment();
+        
+        // Define the parameters inside the current chunk's environment
+        for (int i = 0; i < function.Arity; i++)
+        {
+            // Get the constant's value
+            Value parameter = function.Chunk.GetConstant(i);
+
+            if (_frames.Peek().Environment.Defined((string)parameter.GetValue()))
+            {
+                // ! parameter already defined
+                Console.WriteLine("--- Parameter already defined");
+                return;
+            }
+            
+            environment.Assign((string)parameter.GetValue(), new Value(null, ValueType.Null));
+        }*/
+        
+        // Define the function inside the current environment
+        if (_frames.Peek().Environment.Defined(function.Identifier))
+        {
+            // ! Identifier already defined
+            Console.WriteLine($"Identifier '{function.Identifier}' already defined.");
+            return;
+        }
+        
+        // Define the function inside the current environemnt
+        _frames.Peek().Environment.Assign(function.Identifier, value);
+    }
+    
+    #endregion
+    
+    private void Run()
     {
         for (;;)
         {
@@ -225,8 +280,8 @@ public class VM
                     Push(new Value(true, ValueType.Boolean));
                     break;
                 case Instruction.LoadConstant:
-                    Value constant = _current.GetLocal(ReadByte());
-                    Push(constant);
+                    // ! Value constant = _current.GetLocal(ReadByte());
+                    Push(null);
                     break;
                 case Instruction.Add: // +
                     Add();
@@ -299,7 +354,7 @@ public class VM
                     short offset = ReadShort();
 
                     // Add the offset to the ip
-                    _ip += offset;
+                    // ! _ip += offset;
                     break;
                 }
                 case Instruction.JumpIfFalse:
@@ -309,11 +364,11 @@ public class VM
                     {
                         // Jump
                         short offset = ReadShort();
-                        _ip += offset;
+                        // ! _ip += offset;
                     }
                     else
                     {
-                        _ip += 2;
+                        // ! _ip += 2;
                     }
 
                     break;
@@ -323,7 +378,7 @@ public class VM
                     short offset = ReadShort();
                     
                     // Subtract offset from the ip (going back up the code
-                    _ip -= offset;
+                    // ! _ip -= offset;
                     break;
                 }
                 case Instruction.Call:
@@ -341,37 +396,39 @@ public class VM
 
                     // IP now points to the index of the variable name
                     byte index = ReadByte();
-                    Value varIdentifier = _current.GetLocal(index);
+                    // ! Value varIdentifier = _current.GetLocal(index);
 
                     // Store the value inside the identifier in the list
-                    _globals.Add(varIdentifier, val);
+                    // ! _globals.Add(varIdentifier, val);
                     break;
                 }
                 case Instruction.LoadVar:
                     break;
                 case Instruction.End:
                     return;
+                case Instruction.DefFunction:
+                case Instruction.BeginScope:
+                case Instruction.EndScope:
                 default:
                     throw new ArgumentOutOfRangeException();
             }
         }
     }
 
-    public void Run(Chunk chunk)
+    public void Interpret(string source)
     {
-        _current = chunk;
-        _ip = 0;
+        // ! _current = chunk;
+        // ! _ip = 0;
         // Iterate through the current chunk and execute
+
+        Compiler compiler = new Compiler();
+
+        Function mainFunction = compiler.Compile(source);
         
-        Interpret();
+        _frames.Push(new CallFrame(mainFunction, new Environment(), 0));
         
-        // Top of stack is result
-        //Console.WriteLine("Top of stack: " + ToString(_valueStack.Peek()));
-        
-        // Stored variables:
-        foreach (var entry in _globals)
-        {
-            Console.WriteLine($"Variable \"{entry.Key.GetValue()}\": {entry.Value.GetValue()}");
-        }
+        Run();
+
+        // The main function code should be run by now ... (hopefully)
     }
 }

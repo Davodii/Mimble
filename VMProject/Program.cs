@@ -9,12 +9,8 @@ class Program
         Console.WriteLine(testString);
         Compiler compiler = new Compiler();
 
-        Chunk chunk = compiler.Compile(testString);
+        Function main = compiler.Compile(testString);
         Console.WriteLine("Lets get to printing");
-        chunk.PrintChunk();
-        
-        // Interpret the chunk
-        VM vm = new VM();
-        vm.Run(chunk);
+        main.Chunk.PrintChunk();
     }
 }

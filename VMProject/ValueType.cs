@@ -6,6 +6,7 @@ public enum ValueType
     Boolean,
     Number,
     String,
-    VariableIdentifier,         // ! used for variables
-    Object      // Will be used for things like arrays and other values
+    Identifier,         // ! used for variables
+    Function,
+    Object                      // Will be used for things like arrays and other values
 }

@@ -1,3 +1,5 @@
+using System.Security.AccessControl;
+
 namespace VMProject;
 
 public class Environment
@@ -5,7 +7,7 @@ public class Environment
     private Environment? _enclosing;
     private Dictionary<string, Value> _locals;
 
-    public void Define(string name)
+    private void Define(string name)
     {
         _locals.Add(name, new Value(null, ValueType.Null));
     }
@@ -21,7 +23,12 @@ public class Environment
             // Check if the variable exists in the enclosing environment
             _enclosing.Assign(name, value);
         }
-        // TODO: error, no such variable exists
+        else
+        {
+            // No such variable exists, create it
+            Define(name);
+            _locals[name] = value;
+        }
         return;
     }
 
@@ -38,5 +45,19 @@ public class Environment
          
         // TODO: error, no such variable found
         return null;
+    }
+
+    public bool Defined(string identifier)
+    {
+        if (_locals.ContainsKey(identifier))
+        {
+            return false;
+        }
+        else if (_enclosing == null)
+        {
+            return false;
+        }
+
+        return _enclosing.Defined(identifier);
     }
 }

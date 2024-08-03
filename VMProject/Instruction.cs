@@ -35,11 +35,16 @@ public enum Instruction
     // VARIABLES
     StoreVar,           // StoreVar [ VarIndex ]
     LoadVar,            // LoadVar [ VarIndex ]
+    DefFunction,
     
     
     // FUNCTIONS
     Call,
     Return,
+    
+    // BLOCKS
+    BeginScope,
+    EndScope,
     
     //TODO: remove this v
     End

@@ -1,13 +1,13 @@
 namespace VMProject;
 
-public class Function(string identifier, Chunk chunk, int arity)
+public class Function(string identifier, Chunk chunk)
 {
-    private string _identifier = identifier;
-    private Chunk _chunk = chunk;
-    private int _arity = arity;
+    public string Identifier { get; } = identifier;
+    public Chunk Chunk { get;  } = chunk;
+    public int Arity { get; set; } = 0;
 
     public override string ToString()
     {
-        return $"<Function {_identifier} ({_arity} params)>";
+        return $"<Function {Identifier} ({Arity} params)>";
     }
 }

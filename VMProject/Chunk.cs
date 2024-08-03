@@ -11,7 +11,8 @@ public class Chunk
     private int _codeCount;
     
     // Store constant values found within this chunk
-    private List<Value> _locals;
+    // Also used to get variable identifiers
+    private List<Value> _constants;
 
     //TODO: Add some way to store the current line number
     // Use a delta-offset table
@@ -23,7 +24,7 @@ public class Chunk
         _codeCount = 0;
         _codeCapacity = InitSize;
         _code = new byte[_codeCapacity];
-        _locals = new List<Value>();
+        _constants = new List<Value>();
 
     }
 
@@ -42,7 +43,7 @@ public class Chunk
         _codeCount++;
     }
 
-    public void Write(byte data, int offset)
+    public void Write(int offset, byte data)
     {
         if (offset >= _codeCount)
         {
@@ -53,36 +54,40 @@ public class Chunk
         _code[offset] = data;
     }
 
-    public int AddLocal(Value value)
+    public int AddConstant(Value value)
     {
-
-        _locals.Add(value);
-        //TODO: check this works... 
-        return _locals.Count - 1;
+        _constants.Add(value);
+        return _constants.Count - 1;
     }
 
-    public Value GetLocal(int index)
+    public Value GetConstant(int index)
     {
-        if (index >= _locals.Count)
+        if (index >= _constants.Count)
         {
             // ! out of range exception
             return null;
         }
 
-        return _locals[index];
+        return _constants[index];
     }
-    
-    
-    public int GetLocalIndex(Value constant)
+
+    public bool ContainsValue(Token token)
     {
-        //TODO: check that this will work if constant is not found
-        return _locals.IndexOf(constant);
+        return _constants.Any(value => value.GetValueType() ==  ValueType.Identifier && (string)value.GetValue() == token.GetValue());
+    }
+
+    public int GetConstantIndex(Token token)
+    {
+        if (!ContainsValue(token)) /* ! error */ return -1;
+        
+        // Get the index of the first Value to have the same value as the token and is an identifier
+        return _constants.FindIndex(value =>
+            value.GetValueType() == ValueType.Identifier && (string)value.GetValue() == token.GetValue());
     }
 
     public int GetCodeCount()
     {
         return _codeCount;
-        
     }
     
     public byte GetByte(int index)
@@ -104,13 +109,14 @@ public class Chunk
         
         for (int i = 0; i < _codeCount; i++)
         {
+            Console.Write(i + " : ");
             switch ((Instruction)_code[i])
             {
                 case Instruction.Pop:
                     Console.WriteLine("Pop");
                     break;
                 case Instruction.Null:
-                    Console.WriteLine("Null");
+                    Console.WriteLine("[ Null ]");
                     break;
                 case Instruction.False:
                     Console.WriteLine("[ false ]");
@@ -120,7 +126,7 @@ public class Chunk
                     break;
                 case Instruction.LoadConstant:
                     i++;
-                    Console.WriteLine($"[ {_code[i]}: {GetLocal(_code[i]).GetValue()}]");
+                    Console.WriteLine("Load Constant {" + _code[i] + "}");
                     break;
                 case Instruction.Add:
                     Console.WriteLine("Add");
@@ -144,33 +150,42 @@ public class Chunk
                     Console.WriteLine("Greater");
                     break;
                 case Instruction.Less:
+                    Console.WriteLine("Less");
                     break;
                 case Instruction.Not:
+                    Console.WriteLine("Not");
                     break;
                 case Instruction.Jump:
+                    Console.WriteLine($"Jump +0x{_code[++i].ToString("X2")}{_code[i].ToString("X2")}");
                     break;
                 case Instruction.JumpIfFalse:
-                    Console.WriteLine("Jump if false");
+                    Console.WriteLine($"Jump if false +0x{_code[++i].ToString("X2")}{_code[++i].ToString("X2")}");
                     i += 2;
                     break;
                 case Instruction.Loop:
+                    Console.WriteLine($"Loop -{_code[++i].ToString("X2")}{_code[i].ToString("X2")}");
                     break;
                 case Instruction.Call:
+                    Console.WriteLine($"Call {_code[++i]}");
                     break;
                 case Instruction.Return:
+                    Console.WriteLine("Return");
                     break;
                 case Instruction.End:
                     Console.WriteLine("End");
-                    return;
+                    break;
                 case Instruction.And:
+                    Console.WriteLine("And");
+                    break;
                 case Instruction.Or:
+                    Console.WriteLine("Or");
+                    break;
                 case Instruction.StoreVar:
-                    Console.WriteLine("Store var");
-                    i++;
+                    Console.WriteLine($"Store Var [{_code[++i].ToString("X2")}{_code[++i].ToString("X2")}]");
+                    
                     break;
                 case Instruction.LoadVar:
-                    Console.WriteLine("Load var");
-                    i++;
+                    Console.WriteLine($"Load Var [{_code[++i].ToString("X2")}{_code[++i].ToString("X2")}]");
                     break;
                 default:
                     Console.WriteLine("Unexpected instruction / value: " + i);
