@@ -12,12 +12,11 @@ public class Chunk
     
     // Store constant values found within this chunk
     // Also used to get variable identifiers
-    private List<Value> _constants;
+    private readonly List<Value> _constants;
 
-    //TODO: Add some way to store the current line number
-    // Use a delta-offset table
-    // List of offset (from start of bytecode) and the delta change in the line number, can store it as a list of bytes
-
+    // Store info about the line regarding each index
+    private readonly LineNumberTable<int> _lineNumberTable = new LineNumberTable<int>();
+    
     public Chunk()
     {
         // Initialize the chunk
@@ -28,7 +27,7 @@ public class Chunk
 
     }
 
-    public void Write(byte data)
+    public void Write(byte data, int line)
     {
         // Check if there is still room in the chunk
         if (_codeCount == _codeCapacity)
@@ -37,6 +36,9 @@ public class Chunk
             Array.Resize(ref _code, _codeCapacity * GrowRate);
             _codeCapacity *= GrowRate;
         }
+        
+        // Add the line to the info
+        _lineNumberTable.AddIndexToLine(line, _codeCount);
         
         // Write the operator
         _code[_codeCount] = data;
@@ -47,8 +49,7 @@ public class Chunk
     {
         if (offset >= _codeCount)
         {
-            // TODO: error
-            return;
+            throw new IndexOutOfRangeException( "Offset outside the initialized array of code.");
         }
         
         _code[offset] = data;
@@ -64,21 +65,20 @@ public class Chunk
     {
         if (index >= _constants.Count)
         {
-            // ! out of range exception
-            return null;
+            throw new IndexOutOfRangeException("Index outside of code array range.");
         }
 
         return _constants[index];
     }
 
-    public bool ContainsValue(Token token)
+    private bool ContainsValue(Token token)
     {
         return _constants.Any(value => value.GetValueType() ==  ValueType.Identifier && (string)value.GetValue() == token.GetValue());
     }
 
     public int GetConstantIndex(Token token)
     {
-        if (!ContainsValue(token)) /* ! error */ return -1;
+        if (!ContainsValue(token)) throw new CompileTimeException(token, "Current chunk does not contain the token.");
         
         // Get the index of the first Value to have the same value as the token and is an identifier
         return _constants.FindIndex(value =>
@@ -94,8 +94,7 @@ public class Chunk
     {
         if (index >= _codeCount)
         {
-            // ! out of range error
-            return 255;
+            throw new IndexOutOfRangeException("Index out of range of code array.");
         }
 
         return _code[index];
@@ -105,11 +104,9 @@ public class Chunk
 
     public void PrintChunk()
     {
-        //TODO: make this actually usable
-        
         for (int i = 0; i < _codeCount; i++)
         {
-            Console.Write(i + " : ");
+            Console.Write($"{_lineNumberTable.GetLineInfo(i).ToString(),3}-{i.ToString(),-4} : ");
             switch ((Instruction)_code[i])
             {
                 case Instruction.Pop:
@@ -178,11 +175,10 @@ public class Chunk
                     Console.WriteLine("Or");
                     break;
                 case Instruction.StoreVar:
-                    Console.WriteLine($"Store Var [{_code[++i].ToString("X2")}{_code[++i].ToString("X2")}]");
-                    
+                    Console.WriteLine($"Store Var [{_code[++i].ToString("X")}]");
                     break;
                 case Instruction.LoadVar:
-                    Console.WriteLine($"Load Var [{_code[++i].ToString("X2")}{_code[++i].ToString("X2")}]");
+                    Console.WriteLine($"Load Var [{_code[++i].ToString("X2")}]");
                     break;
                 default:
                     Console.WriteLine("Unexpected instruction / value: " + i);

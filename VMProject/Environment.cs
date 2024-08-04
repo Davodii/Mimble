@@ -2,14 +2,14 @@ using System.Security.AccessControl;
 
 namespace VMProject;
 
-public class Environment(Environment enclosing = null)
+public class Environment(Environment enclosing = null!)
 {
-    private Environment? _enclosing = enclosing;
-    private Dictionary<string, Value> _locals;
+    private readonly Environment? _enclosing = enclosing;
+    private readonly Dictionary<string, Value> _locals = new();
 
     private void Define(string name)
     {
-        _locals.Add(name, new Value(null, ValueType.Null));
+        _locals.Add(name, new Value(null!, ValueType.Null));
     }
 
     public void Assign(string name, Value value)
@@ -29,7 +29,6 @@ public class Environment(Environment enclosing = null)
             Define(name);
             _locals[name] = value;
         }
-        return;
     }
 
     public Value Get(string name)
@@ -38,13 +37,13 @@ public class Environment(Environment enclosing = null)
         {
             return local;
         }
-        else if (_enclosing != null)
+
+        if (_enclosing != null)
         {
             return _enclosing.Get(name);
         }
-         
-        // TODO: error, no such variable found
-        return null;
+        
+        throw new RunTimeException(0, $"No variable or function with identifier '{name}' is defined.");
     }
 
     public bool Defined(string identifier)

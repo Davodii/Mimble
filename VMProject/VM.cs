@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Globalization;
 using System.Runtime.Intrinsics.X86;
 
 namespace VMProject;
@@ -9,18 +10,9 @@ public class VM
      * Perform interpreting for any passed in chunks of code.
      */
 
-    private Stack<Value> _valueStack;
-    private Stack<CallFrame> _frames; // the bottom-most frame will be the "global" function
+    private readonly Stack<Value> _valueStack = new();
+    private readonly Stack<CallFrame> _frames = new();
     
-    
-    public VM()
-    {
-        _valueStack = new Stack<Value>();
-        _frames = new Stack<CallFrame>();
-        
-        // TODO: get the first callFrame
-    }
-
     private Function CurrentFunction()
     {
         return CurrentFrame().Function;
@@ -75,11 +67,9 @@ public class VM
     
     private double AsNumber(Value val)
     {
-        // TODO: check the number is not null
         if (val.GetValueType() != ValueType.Number)
         {
-            //TODO: error
-            return -0;
+            throw new RunTimeException(0, $"Expected a number, but got '{val.GetValueType().ToString()}'.");
         }
 
         return (double)val.GetValue();
@@ -89,8 +79,7 @@ public class VM
     {
         if (val.GetValueType() != ValueType.String)
         {
-            //TODO: error
-            return "\0";
+            throw new RunTimeException(0, $"Expected a string, but got '{val.GetValueType().ToString()}'.");
         }
 
         return (string)val.GetValue();
@@ -107,16 +96,16 @@ public class VM
                 if ((bool)val.GetValue()) return "true";
                 return "false";
             case ValueType.Number:
-                return AsNumber(val).ToString();
+                return AsNumber(val).ToString(CultureInfo.InvariantCulture);
             case ValueType.String:
                 return AsString(val);
         }
         
         // Should never reach here
-        return "ERROR";
+        throw new RunTimeException(0, $"Expected a value but got '{val.GetValueType().ToString()}'.");
     }
 
-    private bool IsFalsey(Value val)
+    private bool IsFalse(Value val)
     {
         return val.GetValueType() == ValueType.Boolean && (bool)val.GetValue() == false;
     }
@@ -146,9 +135,8 @@ public class VM
         }
         else
         {
-            // ! invalid state
-            //TODO: throw error
-            return;
+            // ! Invalid state
+            throw new RunTimeException(0, $"The values '{val2.GetValue()}' and '{val1.GetValue()}' cannot be added.");
         }
     }
     
@@ -159,8 +147,7 @@ public class VM
 
         if (!AreNumbers(val1, val2))
         {
-            // ! Error
-            return;
+            throw new RunTimeException(0, "Expected two numbers.");
         }
 
         // val1 is on top of val2 so the actual order is
@@ -177,8 +164,7 @@ public class VM
         
         if (!AreNumbers(val1, val2))
         {
-            // ! Error
-            return;
+            throw new RunTimeException(0, "Expected two numbers.");
         }
 
         double result = AsNumber(val1) * AsNumber(val2);
@@ -192,11 +178,52 @@ public class VM
 
         if (!AreNumbers(val1, val2))
         {
-            // ! Error
+            throw new RunTimeException(0, "Expected two numbers.");
         }
 
         double result = AsNumber(val2) / AsNumber(val1);
         Push(new Value(result, ValueType.Number));
+    }
+
+    private void Or()
+    {
+        Value val1 = Pop();
+        Value val2 = Pop();
+                    
+        if (!AreBoolean(val1, val2))
+        {
+            throw new RunTimeException(0, "Expected two booleans.");
+        }
+
+        if (IsFalse(val1) && IsFalse(val2))
+        {
+            Push(new Value(false, ValueType.Boolean));
+        }
+        else
+        {
+            Push(new Value(true, ValueType.Boolean));
+        }
+    }
+
+    private void And()
+    {
+        Value val1 = Pop();
+        Value val2 = Pop();
+
+        if (!AreBoolean(val1, val2))
+        {
+            throw new RunTimeException(0, "Expected two booleans.");
+        }
+
+        if (IsFalse(val2) || IsFalse(val1))
+        {
+            // Skip over val1
+            Push(new Value(false, ValueType.Boolean));
+        }
+        else
+        {
+            Push(new Value(true, ValueType.Boolean));
+        }
     }
     
     #endregion
@@ -208,12 +235,25 @@ public class VM
         Value val = Pop();
         if (val.GetValueType() != ValueType.Number)
         {
-            // ! Error
-            return;
+            throw new RunTimeException(0, $"Expected a number but got '{val.GetValueType()}'.");
         }
 
         double result = -AsNumber(val);
         Push(new Value(result, ValueType.Number));
+    }
+
+    private void Not()
+    {
+        Value val = Pop();
+
+        if (val.GetValueType() != ValueType.Boolean)
+        {
+            throw new RunTimeException(0, $"Expected a boolean but got '{val.GetValueType()}'");
+        }
+
+        bool not = !(bool)val.GetValue();
+        Push(new Value(not, ValueType.Boolean));
+
     }
     #endregion
     
@@ -261,7 +301,7 @@ public class VM
             return;
         }
         
-        // Define the function inside the current environemnt
+        // Define the function inside the current environment
         _frames.Peek().GetEnvironment().Assign(function.Identifier, value);
     }
     
@@ -281,7 +321,7 @@ public class VM
                     Pop();
                     break;
                 case Instruction.Null:
-                    Push(new Value(null, ValueType.Null));
+                    Push(new Value(null!, ValueType.Null));
                     break;
                 case Instruction.False:
                     Push(new Value(false, ValueType.Boolean));
@@ -324,7 +364,7 @@ public class VM
 
                     if (!AreNumbers(val1, val2))
                     {
-                        // TODO: error
+                        throw new RunTimeException(0, "Expected two numbers.");
                     }
 
                     bool greater = (double)val2.GetValue() > (double)val1.GetValue();
@@ -338,7 +378,7 @@ public class VM
 
                     if (!AreNumbers(val1, val2))
                     {
-                        // TODO: error
+                        throw new RunTimeException(0, "Expected two numbers.");
                     }
 
                     bool greater = (double)val2.GetValue() < (double)val1.GetValue();
@@ -346,61 +386,15 @@ public class VM
                     break;
                 }
                 case Instruction.And:
-                {
-                    Value val1 = Pop();
-                    Value val2 = Pop();
-
-                    if (!AreBoolean(val1, val2))
-                    {
-                        // ! Error
-                    }
-
-                    if (IsFalsey(val2) || IsFalsey(val1))
-                    {
-                        // Skip over val1
-                        Push(new Value(false, ValueType.Boolean));
-                    }
-                    else
-                    {
-                        Push(new Value(true, ValueType.Boolean));
-                    }
-                    
+                    And();
                     break;
-                }
+                
                 case Instruction.Or:
-                {
-                    Value val1 = Pop();
-                    Value val2 = Pop();
-                    
-                    if (!AreBoolean(val1, val2))
-                    {
-                        // ! Error
-                    }
-
-                    if (IsFalsey(val1) || IsFalsey(val2))
-                    {
-                        Push(new Value(false, ValueType.Boolean));
-                    }
-                    else
-                    {
-                        Push(new Value(true, ValueType.Boolean));
-                    }
-                    
+                    Or();
                     break;
-                }
                 case Instruction.Not: // not
-                {
-                    Value val = Pop();
-
-                    if (val.GetValueType() != ValueType.Boolean)
-                    {
-                        // TODO: Error
-                    }
-
-                    bool not = !(bool)val.GetValue();
-                    Push(new Value(not, ValueType.Boolean));
+                    Not();
                     break;
-                }
                 case Instruction.Jump:
                 {
                     // Read the next two bytes
@@ -413,7 +407,7 @@ public class VM
                 case Instruction.JumpIfFalse:
                 {
                     // Check if the top value is false
-                    if (IsFalsey(Peek()))
+                    if (IsFalse(Peek()))
                     {
                         // Jump
                         short offset = ReadShort();
@@ -448,6 +442,7 @@ public class VM
                     if (enclosing == null)
                     {
                         // ! Error - cannot go out of this scope since there is no scope above it
+                        throw new RunTimeException(0, "Cannot end scope, no enclosing scope.");
                         break;
                     }
 
@@ -487,8 +482,7 @@ public class VM
                     // Check to see if the function is already defined
                     if (CurrentFrame().GetEnvironment().Defined(identifier))
                     {
-                        // ! Error
-                        return;
+                        throw new RunTimeException(0, "Identifier is already defined.");
                     }
 
                     CurrentFrame().GetEnvironment().Assign(identifier, functionValue);
@@ -501,7 +495,7 @@ public class VM
 
                     if (functionValue.GetValueType() != ValueType.Function)
                     {
-                        // ! Error
+                        throw new RunTimeException(0, "Identifier is not a function.");
                     }
 
                     // TODO: make this work with the main function 
@@ -518,18 +512,17 @@ public class VM
                 {
                     // Return the current function
                     Value value = Pop();
-
+                    
+                    _frames.Pop();
                     if (_frames.Count == 0)
                     {
                         // Finished execution
                         return;
                     }
-
-                    _frames.Pop();
                     
-                    // TODO: might be memory leak on the stack since the function may just be called 
-                    // like 'functionCall()' but if it does not return a value, then 'null' will be
-                    // pushed to the stack
+                    // ! Might be memory leak on the stack since the function may just be called 
+                    // ! like 'functionCall()' but if it does not return a value, then 'null' will be
+                    // ! pushed to the stack
                     Push(value);
                     break;
                 }
@@ -541,17 +534,18 @@ public class VM
 
     public void Interpret(string source)
     {
-        // Iterate through the current chunk and execute
-
+        // Compile the source program
         Compiler compiler = new Compiler();
-
         Function mainFunction = compiler.Compile(source);
-        Environment mainEnvironment = new Environment();
         
+        mainFunction.Chunk.PrintChunk();
+        
+        // Initialize the main function frame
+        Environment mainEnvironment = new Environment();
         _frames.Push(new CallFrame(mainFunction, mainEnvironment));
         
+        // Begin execution of the code
         Run();
 
-        // The main function code should be run by now ... (hopefully)
     }
 }

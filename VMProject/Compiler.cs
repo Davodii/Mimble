@@ -1,28 +1,15 @@
-using System.Data.Common;
-using System.Linq.Expressions;
-using System.Reflection.Metadata;
-using System.Reflection.Metadata.Ecma335;
-using System.Runtime.Intrinsics.X86;
-using System.Text.RegularExpressions;
-
 namespace VMProject;
 
 public class Compiler
 {
-    /*
-     * Use an LALR parser to parse the input and create the necessary bytecode 
-     */
-
     // ! Parsing
-    private Scanner _scanner = null;
-    private Token _previous = null;
-    private Token _current = null;
+    private Scanner _scanner = null!;
+    private Token _previous = null!;
+    private Token _current = null!;
     
     // ! Compiling
-    private Function a;
-
-    private Stack<Function> _functions;
-
+    private readonly Stack<Function> _functions = new Stack<Function>();
+    
     private Function CurrentFunction()
     {
         return _functions.Peek();
@@ -33,12 +20,12 @@ public class Compiler
     private void EmitByte(Instruction op)
     {
         // Write the op to the chunk
-        CurrentFunction().Chunk.Write((byte)op);
+        CurrentFunction().Chunk.Write((byte)op, _current.GetLine());
     }
 
     private void EmitByte(byte val)
     {
-        CurrentFunction().Chunk.Write(val);
+        CurrentFunction().Chunk.Write(val, _current.GetLine());
     }
 
     private int EmitJump(Instruction op)
@@ -95,13 +82,9 @@ public class Compiler
 
     private void Consume(TokenType type, string msg)
     {
-        if (_current.GetType() == type)
-        {
-            Advance();
-            return;
-        }
+        if (_current.GetType() != type) throw new CompileTimeException(_current, msg);
         
-        //TODO: throw error with the given msg
+        Advance();
     }
     #endregion
     
@@ -174,22 +157,23 @@ public class Compiler
         // Get the identifier as a string
         // Store the string in the current chunk's constants value
 
-        Token identifier = _current;
-        int indexAsConstant = CurrentFunction().Chunk.GetConstantIndex(identifier);
-
-        if (indexAsConstant == -1)
+        Token identifier = _previous;
+        int indexAsConstant = -1;
+        try
+        {
+            indexAsConstant = CurrentFunction().Chunk.GetConstantIndex(identifier);
+        }
+        catch (CompileTimeException e)
         {
             // Add the identifier to the current chunk's constants
             indexAsConstant =
                 CurrentFunction().Chunk.AddConstant(new Value(identifier.GetValue(), ValueType.Identifier));
         }
-
+        
         // TODO: check if we are accessing an index in the array 
         if (Check(TokenType.LeftParen))
         {
-            // Function call
-            // TODO: create a function to handle function calls for here and inside HandleIdentifier()
-            
+            FunctionCall();
             Advance();
             return;
         }
@@ -207,7 +191,6 @@ public class Compiler
             EmitByte((byte)indexAsConstant);
         }
         
-        Advance();
     }
 
     private void FunctionCall()
@@ -255,12 +238,11 @@ public class Compiler
         //TODO: check not at the top level of the program and 
         //      actually inside of a function
 
-        if (Match(TokenType.Eol))
+        if (Match(TokenType.Eol) || Match(TokenType.Eof))
         {
-            //TODO: write null to the return value
-            //      emit return
             EmitByte(Instruction.Null);
             EmitByte(Instruction.Return);
+            return;
         }
 
         Expression();
@@ -271,10 +253,7 @@ public class Compiler
     private void ExpressionStatement()
     {
         Expression();
-        
-        //TODO: check no other tokens (i.e. \n found)
-        
-        // EmitByte(Instruction.Pop);
+        Consume(TokenType.Eol, "Expect expression to be terminated.");
     }
 
     private void FunctionDeclaration()
@@ -303,7 +282,7 @@ public class Compiler
             {
                 argumentCount++;
                 // ! Define variable to the function's constants
-                // Identifier();
+                Identifier();
             } while (Match(TokenType.Comma));
         }
 
@@ -346,7 +325,6 @@ public class Compiler
 
     private void ForStatement()
     {
-        return;
         // throw new NotImplementedException();
         // identifier
         // in
@@ -441,7 +419,7 @@ public class Compiler
     #region Expressions
     
 
-    private Dictionary<TokenType, (bool, int)> _operatorInfo = new Dictionary<TokenType, (bool, int)>()
+    private readonly Dictionary<TokenType, (bool, int)> _operatorInfo = new Dictionary<TokenType, (bool, int)>()
     {
         { TokenType.Or, (false, 0)},
         { TokenType.And, (false, 1)},
@@ -517,7 +495,7 @@ public class Compiler
         if (_current.GetType() == TokenType.False || _current.GetType() == TokenType.True || 
             _current.GetType() == TokenType.Null)
         {
-            // ! literal
+            // ! Literal
             HandleLiteral();
         }
         else if (_current.GetType() == TokenType.Number || _current.GetType() == TokenType.String)
@@ -532,8 +510,7 @@ public class Compiler
         }
         else
         {
-            // ! Unexpected token here / unterminated expression
-            Console.WriteLine("Unexpected token type: " + _current.GetType());
+            throw new CompileTimeException(_current, $"Unexpected token '{_current}'");
         }
         
         Advance();
@@ -570,8 +547,7 @@ public class Compiler
         }
         else
         {
-            // ! Error
-            return;
+            throw new CompileTimeException(_current, "Current token is not a constant value.");
         }
 
         int index = CurrentFunction().Chunk.AddConstant(val);
@@ -647,9 +623,6 @@ public class Compiler
                 EmitByte(Instruction.Greater);
                 EmitByte(Instruction.Not);
                 break;
-            default:
-                // ! Should never be here
-                break;
         }
     }
     
@@ -679,13 +652,18 @@ public class Compiler
         _scanner = new Scanner(source);
 
         Function main = new Function("main", new Chunk());
+        _functions.Push(main);
         
         // Parse the source text and compile to the chunk
         Advance();
-        
-        Declaration();
+
+        while (_current.GetType() != TokenType.Eof)
+        {
+            Declaration();
+        }
         
         ReturnStatement();
+
         
         return main;
     }

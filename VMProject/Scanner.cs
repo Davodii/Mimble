@@ -1,53 +1,46 @@
 namespace VMProject;
 
-public class Scanner
+public class Scanner(string source)
 {
     /*
      * Take source code and produce Tokens on demand
      */
+    
+    // TODO: chaneg the way Advance() works and use the return field
 
-    private readonly string _source;
     private int _start;
     private int _current;
-    private int _lines;
+    private int _lines = 1;
 
-    public Scanner(string source)
-    {
-        _source = source;
-        _start = 0;
-        _current = 0;
-        _lines = 1;
-    }
-
-    private char Advance()
+    private void Advance()
     {
         _current++;
-        return _source[_current - 1];
+        // return source[_current - 1];
     }
 
     private char Peek()
     {
-        return _source[_current];
+        return source[_current];
     }
 
     private char PeekNext()
     {
         if (IsAtEnd()) return '\0';
-        return _source[_current + 1];
+        return source[_current + 1];
     }
 
     private bool IsAtEnd()
     {
-        if (_current >= _source.Length) return true;
+        if (_current >= source.Length || _start >= source.Length) return true;
         
         // Check if the end of a string is encountered
-        return _source[_current] == '\0';
+        return source[_current] == '\0';
     }
 
     private bool Match(char c)
     {
         if (IsAtEnd()) return false;
-        if (_source[_current] != c) return false;
+        if (source[_current] != c) return false;
 
         Advance();
         return true;
@@ -55,7 +48,7 @@ public class Scanner
 
     private static bool IsAlpha(char c)
     {
-        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_');
+        return c is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '_';
     }
 
     private static bool IsDigit(char c)
@@ -65,14 +58,12 @@ public class Scanner
 
     private TokenType CheckKeyword(int offset, string rest, TokenType type)
     {
-        //TODO: check this function actually works
-        
         // Check from _start for rest to see if the keyword matches
         if (_current - _start - offset != rest.Length || 
-            _start + rest.Length + offset > _source.Length) 
+            _start + rest.Length + offset > source.Length) 
             return TokenType.Identifier;
         
-        return rest.Where((t, i) => _source[_start + i + offset] != t).Any() ? TokenType.Identifier : type;
+        return rest.Where((t, i) => source[_start + i + offset] != t).Any() ? TokenType.Identifier : type;
     }
 
     private TokenType CheckTwoKeywords(int offset, string keyword1, string keyword2, TokenType type1, TokenType type2)
@@ -93,10 +84,7 @@ public class Scanner
     private TokenType IdentifierType()
     {
         // Match the token stored between _start and _current to a TokenType
-
-        //TODO: implement (and also figure out all the keywords)
-        //TODO: check this actually works for multiple keywords
-        switch (_source[_start])
+        switch (source[_start])
         {
             case 'a': return CheckKeyword(1, "nd", TokenType.And);
             case 'b': return CheckKeyword(1, "reak", TokenType.Break);
@@ -174,12 +162,11 @@ public class Scanner
             if (Peek() == '\n') _lines++;
             Advance();
         }
-
-        //TODO: parse error, unterminated string.
-        if (IsAtEnd()) return null;
+        
+        if (IsAtEnd()) throw new CompileTimeException(MakeToken(TokenType.Error),"Unterminated string.");
         
         Token token =  MakeToken(TokenType.String);
-        // Closing quote
+        // Consume the closing quote
         Advance();
 
         return token;
@@ -206,8 +193,12 @@ public class Scanner
     
     private Token MakeToken(TokenType type)
     {
-        // Make everything inside _previous to _current a token with the correct TokenType
-        string value = _source.Substring(_start, _current - _start);
+        if (type == TokenType.Eof)
+        {
+            return new Token(TokenType.Eof, _start, "", _lines);
+        }
+        
+        string value = source.Substring(_start, _current - _start);
         
         Token token = new Token(type, _start, value, _lines);
         _current++;
@@ -223,17 +214,16 @@ public class Scanner
         
         // Skip whitespace
         SkipWhitespace();
+        
+        
         _start = _current;
-
-
-        char c = _source[_current];
+        char c = source[_current];
         
         
         // Check literals and identifiers
         if (IsAlpha(c)) return Identifier();
         if (IsDigit(c)) return Number();
-
-        // TODO: check this is necessary
+        
         Advance();
         
         // Check other characters
@@ -267,8 +257,6 @@ public class Scanner
                 break;
         }
         
-        // Unexpected token if here
-        //TODO: throw a parse error, no valid token was found
-        return new Token(TokenType.Error, _start, "", _lines);
+        throw new ParseException(_start, _current, "No valid token could be matched.");
     }
 }
