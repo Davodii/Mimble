@@ -191,6 +191,7 @@ public class Compiler
             EmitByte((byte)indexAsConstant);
         }
         
+        Consume(TokenType.Eol, "Expect expression to be terminated.");
     }
 
     private void FunctionCall()

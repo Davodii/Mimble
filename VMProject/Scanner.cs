@@ -12,10 +12,10 @@ public class Scanner(string source)
     private int _current;
     private int _lines = 1;
 
-    private void Advance()
+    private char Advance()
     {
         _current++;
-        // return source[_current - 1];
+        return source[_current - 1];
     }
 
     private char Peek()
@@ -32,9 +32,8 @@ public class Scanner(string source)
     private bool IsAtEnd()
     {
         if (_current >= source.Length || _start >= source.Length) return true;
-        
-        // Check if the end of a string is encountered
-        return source[_current] == '\0';
+
+        return false;
     }
 
     private bool Match(char c)
@@ -129,15 +128,15 @@ public class Scanner(string source)
     private Token Identifier()
     {
         // Keep advancing until a non-alpha or digit is found
-        while (IsAlpha(Peek()) || IsDigit(Peek())) Advance();
+        while (!IsAtEnd() && IsAlpha(Peek()) || IsDigit(Peek())) Advance();
 
-        
+        // Current is on the next token
         return MakeToken(IdentifierType());
     }
 
     private Token Number()
     {
-        while (IsDigit(Peek())) Advance();
+        while (!IsAtEnd() && IsDigit(Peek())) Advance();
         
         // Check for fractional part
         if (Peek() == '.' && IsDigit(PeekNext()))
@@ -199,11 +198,9 @@ public class Scanner(string source)
         }
         
         string value = source.Substring(_start, _current - _start);
-        
+        Console.WriteLine(value);
         Token token = new Token(type, _start, value, _lines);
-        _current++;
         _start = _current;
-
         return token;
     }
     
@@ -214,17 +211,15 @@ public class Scanner(string source)
         
         // Skip whitespace
         SkipWhitespace();
-        
-        
         _start = _current;
-        char c = source[_current];
+        
+        
+        char c = Advance();
         
         
         // Check literals and identifiers
         if (IsAlpha(c)) return Identifier();
         if (IsDigit(c)) return Number();
-        
-        Advance();
         
         // Check other characters
         switch (c)
