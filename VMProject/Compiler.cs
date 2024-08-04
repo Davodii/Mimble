@@ -60,6 +60,15 @@ public class Compiler
         CurrentFunction().Chunk.Write(offset, (byte)((jump & 0xFF00) >> 8));
         CurrentFunction().Chunk.Write(offset + 1, (byte)(jump & 0xFF));
     }
+
+    private void EmitLoop(int loopStart)
+    {
+        EmitByte(Instruction.Loop);
+        int offset = CurrentFunction().Chunk.GetCodeCount() - loopStart + 2;
+        
+        EmitByte((byte)((offset & 0xFF00) >> 8));
+        EmitByte((byte)((offset & 0xFF)));
+    }
     
     #endregion
     
@@ -139,7 +148,9 @@ public class Compiler
         }
         else if (Match(TokenType.Do))
         {
+            BeginScope();
             Block();
+            EndScope();
         }
         else if (Match(TokenType.Identifier))
         {
@@ -314,17 +325,23 @@ public class Compiler
 
     private void WhileStatement()
     {
-        // expression
-        // block
-        
+
+        int loopStart = CurrentFunction().Chunk.GetCodeCount();
         Expression();
-        EmitByte(Instruction.Pop);
         
-        // Jump
+        // Jump past body if expression is false
+        int exitJump = EmitJump(Instruction.JumpIfFalse);
+        EmitByte(Instruction.Pop);
         
         Statement();
         
-        // Jump to the expression
+        // Loop back to the expression
+        EmitLoop(loopStart);
+        
+        // Patch the jump
+        PatchJump(exitJump);
+        EmitByte(Instruction.Pop);
+        
     }
 
     private void ForStatement()

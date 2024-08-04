@@ -2,9 +2,9 @@ using System.Security.AccessControl;
 
 namespace VMProject;
 
-public class Environment
+public class Environment(Environment enclosing = null)
 {
-    private Environment? _enclosing;
+    private Environment? _enclosing = enclosing;
     private Dictionary<string, Value> _locals;
 
     private void Define(string name)
@@ -59,5 +59,10 @@ public class Environment
         }
 
         return _enclosing.Defined(identifier);
+    }
+
+    public Environment? GetEnclosing()
+    {
+        return _enclosing;
     }
 }

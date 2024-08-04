@@ -171,9 +171,6 @@ public class Chunk
                 case Instruction.Return:
                     Console.WriteLine("Return");
                     break;
-                case Instruction.End:
-                    Console.WriteLine("End");
-                    break;
                 case Instruction.And:
                     Console.WriteLine("And");
                     break;

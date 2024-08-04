@@ -23,7 +23,12 @@ public class VM
 
     private Function CurrentFunction()
     {
-        return _frames.Peek().Function;
+        return CurrentFrame().Function;
+    }
+
+    private CallFrame CurrentFrame()
+    {
+        return _frames.Peek();
     }
 
     private void Push(Value value)
@@ -58,6 +63,16 @@ public class VM
     
     #region Utility Functions
 
+    private bool AreNumbers(Value val1, Value val2)
+    {
+        return val1.GetValueType() == ValueType.Number && val2.GetValueType() == ValueType.Number;
+    }
+
+    private bool AreBoolean(Value val1, Value val2)
+    {
+        return val1.GetValueType() == ValueType.Boolean && val2.GetValueType() == ValueType.Boolean;
+    }
+    
     private double AsNumber(Value val)
     {
         // TODO: check the number is not null
@@ -109,11 +124,6 @@ public class VM
     #endregion
     
     #region Binary Operations
-
-    private bool AreNumbers(Value val1, Value val2)
-    {
-        return val1.GetValueType() == ValueType.Number && val2.GetValueType() == ValueType.Number;
-    }
     
     private void Add()
     {
@@ -244,7 +254,7 @@ public class VM
         }*/
         
         // Define the function inside the current environment
-        if (_frames.Peek().Environment.Defined(function.Identifier))
+        if (_frames.Peek().GetEnvironment().Defined(function.Identifier))
         {
             // ! Identifier already defined
             Console.WriteLine($"Identifier '{function.Identifier}' already defined.");
@@ -252,7 +262,7 @@ public class VM
         }
         
         // Define the function inside the current environemnt
-        _frames.Peek().Environment.Assign(function.Identifier, value);
+        _frames.Peek().GetEnvironment().Assign(function.Identifier, value);
     }
     
     #endregion
@@ -280,8 +290,8 @@ public class VM
                     Push(new Value(true, ValueType.Boolean));
                     break;
                 case Instruction.LoadConstant:
-                    // ! Value constant = _current.GetLocal(ReadByte());
-                    Push(null);
+                    Value constant = CurrentFunction().Chunk.GetConstant(ReadByte());
+                    Push(constant);
                     break;
                 case Instruction.Add: // +
                     Add();
@@ -335,6 +345,49 @@ public class VM
                     Push(new Value(greater, ValueType.Boolean));
                     break;
                 }
+                case Instruction.And:
+                {
+                    Value val1 = Pop();
+                    Value val2 = Pop();
+
+                    if (!AreBoolean(val1, val2))
+                    {
+                        // ! Error
+                    }
+
+                    if (IsFalsey(val2) || IsFalsey(val1))
+                    {
+                        // Skip over val1
+                        Push(new Value(false, ValueType.Boolean));
+                    }
+                    else
+                    {
+                        Push(new Value(true, ValueType.Boolean));
+                    }
+                    
+                    break;
+                }
+                case Instruction.Or:
+                {
+                    Value val1 = Pop();
+                    Value val2 = Pop();
+                    
+                    if (!AreBoolean(val1, val2))
+                    {
+                        // ! Error
+                    }
+
+                    if (IsFalsey(val1) || IsFalsey(val2))
+                    {
+                        Push(new Value(false, ValueType.Boolean));
+                    }
+                    else
+                    {
+                        Push(new Value(true, ValueType.Boolean));
+                    }
+                    
+                    break;
+                }
                 case Instruction.Not: // not
                 {
                     Value val = Pop();
@@ -354,21 +407,22 @@ public class VM
                     short offset = ReadShort();
 
                     // Add the offset to the ip
-                    // ! _ip += offset;
+                    CurrentFrame().AddOffset(offset);
                     break;
                 }
                 case Instruction.JumpIfFalse:
                 {
-                    // Check if the top value is falsey
+                    // Check if the top value is false
                     if (IsFalsey(Peek()))
                     {
                         // Jump
                         short offset = ReadShort();
-                        // ! _ip += offset;
+                        CurrentFrame().AddOffset(offset);
                     }
                     else
                     {
-                        // ! _ip += 2;
+                        // Skip the bytes of the jump instruction
+                        CurrentFrame().AddOffset(2);
                     }
 
                     break;
@@ -378,17 +432,29 @@ public class VM
                     short offset = ReadShort();
                     
                     // Subtract offset from the ip (going back up the code
-                    // ! _ip -= offset;
+                    CurrentFrame().AddOffset(-offset);
                     break;
                 }
-                case Instruction.Call:
+                case Instruction.BeginScope:
+                {
+                    Environment scope = new Environment(CurrentFrame().GetEnvironment());
+                    CurrentFrame().SetEnvironment(scope);
                     break;
-                case Instruction.Return:
+                }
+                case Instruction.EndScope:
+                {
+                    Environment? enclosing = CurrentFrame().GetEnvironment().GetEnclosing();
+                    
+                    if (enclosing == null)
+                    {
+                        // ! Error - cannot go out of this scope since there is no scope above it
+                        break;
+                    }
+
+                    CurrentFrame().SetEnvironment(enclosing);
+                    
                     break;
-                case Instruction.And:
-                    break;
-                case Instruction.Or:
-                    break;
+                }
                 case Instruction.StoreVar:
                 {
                     // Pop the top of the stack and store it into the variable given by the second 
@@ -396,19 +462,77 @@ public class VM
 
                     // IP now points to the index of the variable name
                     byte index = ReadByte();
-                    // ! Value varIdentifier = _current.GetLocal(index);
+                    Value variable = CurrentFunction().Chunk.GetConstant(index);
+                    string identifier = (string)variable.GetValue();
 
                     // Store the value inside the identifier in the list
-                    // ! _globals.Add(varIdentifier, val);
+                    CurrentFrame().GetEnvironment().Assign(identifier, val);
                     break;
                 }
                 case Instruction.LoadVar:
+                {
+                    Value variable = CurrentFunction().Chunk.GetConstant(ReadByte());
+                    string identifier = (string)variable.GetValue();
+                    
+                    Value value = CurrentFrame().GetEnvironment().Get(identifier);
+                    
+                    Push(value);
                     break;
-                case Instruction.End:
-                    return;
+                }
                 case Instruction.DefFunction:
-                case Instruction.BeginScope:
-                case Instruction.EndScope:
+                {
+                    Value functionValue = CurrentFunction().Chunk.GetConstant(ReadByte());
+                    string identifier = ((Function)functionValue.GetValue()).Identifier;
+
+                    // Check to see if the function is already defined
+                    if (CurrentFrame().GetEnvironment().Defined(identifier))
+                    {
+                        // ! Error
+                        return;
+                    }
+
+                    CurrentFrame().GetEnvironment().Assign(identifier, functionValue);
+                    break;
+                }
+                case Instruction.Call:
+                {
+                    // Function value already stored on the stack
+                    Value functionValue = Pop();
+
+                    if (functionValue.GetValueType() != ValueType.Function)
+                    {
+                        // ! Error
+                    }
+
+                    // TODO: make this work with the main function 
+                    Environment environment = new Environment(CurrentFrame().GetEnvironment());
+
+                    CallFrame frame = new CallFrame((Function)functionValue.GetValue(), environment);
+                    
+                    // Add the frame onto the call stack
+                    _frames.Push(frame);
+                    
+                    break;
+                }
+                case Instruction.Return:
+                {
+                    // Return the current function
+                    Value value = Pop();
+
+                    if (_frames.Count == 0)
+                    {
+                        // Finished execution
+                        return;
+                    }
+
+                    _frames.Pop();
+                    
+                    // TODO: might be memory leak on the stack since the function may just be called 
+                    // like 'functionCall()' but if it does not return a value, then 'null' will be
+                    // pushed to the stack
+                    Push(value);
+                    break;
+                }
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -417,15 +541,14 @@ public class VM
 
     public void Interpret(string source)
     {
-        // ! _current = chunk;
-        // ! _ip = 0;
         // Iterate through the current chunk and execute
 
         Compiler compiler = new Compiler();
 
         Function mainFunction = compiler.Compile(source);
+        Environment mainEnvironment = new Environment();
         
-        _frames.Push(new CallFrame(mainFunction, new Environment(), 0));
+        _frames.Push(new CallFrame(mainFunction, mainEnvironment));
         
         Run();
 
