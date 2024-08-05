@@ -97,6 +97,11 @@ public class Compiler
         {
             FunctionDeclaration();
         }
+        else if (Match(TokenType.Eol))
+        {
+            // Empty line
+            return;
+        }
         else
         {
             Statement();
@@ -156,7 +161,28 @@ public class Compiler
 
         // Get the identifier as a string
         // Store the string in the current chunk's constants value
+        
+        // TODO: check if we are accessing an index in the array 
+        if (Check(TokenType.LeftParen))
+        {
+            FunctionCall();
+        }
 
+        else if (Check(TokenType.SqLeftBrace))
+        {
+            // Array initialization
+        }
+        
+        else if (Check(TokenType.Equal))
+        {
+            Assign();
+        }
+        
+        Consume(TokenType.Eol, "Expect expression to be terminated.");
+    }
+
+    private void Assign()
+    {
         Token identifier = _previous;
         int indexAsConstant = -1;
         try
@@ -170,40 +196,29 @@ public class Compiler
                 CurrentFunction().Chunk.AddConstant(new Value(identifier.GetValue(), ValueType.Identifier));
         }
         
-        // TODO: check if we are accessing an index in the array 
-        if (Check(TokenType.LeftParen))
-        {
-            FunctionCall();
-            Advance();
-            return;
-        }
-
-        if (Match(TokenType.SqLeftBrace))
-        {
-            // Array initialization
-        }
+        Consume(TokenType.Equal, "Expect '=' after identifier.");
         
-        if (Match(TokenType.Equal))
-        {
-            // Assign statement
-            Expression();
-            EmitByte(Instruction.StoreVar);
-            EmitByte((byte)indexAsConstant);
-        }
-        
-        Consume(TokenType.Eol, "Expect expression to be terminated.");
+        // Assign statement
+        Expression();
+        EmitByte(Instruction.StoreVar);
+        EmitByte((byte)indexAsConstant);
     }
-
+    
     private void FunctionCall()
     {
-        // Current token is the function identifier
-        Token identifier = _current;
+        // Previous token is the function identifier
+        Token identifier = _previous;
         
         // Check the current identifier exists, or, add as constant
-        int functionIndex = CurrentFunction().Chunk.GetConstantIndex(identifier);
-        if (functionIndex == -1)
+        int functionIndex = -1;
+        try
+        {
+            functionIndex = CurrentFunction().Chunk.GetConstantIndex(identifier);
+        }
+        catch
         {
             functionIndex = CurrentFunction().Chunk.AddConstant(new Value(identifier.GetValue(), ValueType.Identifier));
+
         }
         
         Consume(TokenType.LeftParen, "Expect '(' after function identifier.");
@@ -275,6 +290,7 @@ public class Compiler
         // ! Might not need to do this for here since a function has its own environmnet anyway
         // BeginScope();
         
+        Advance();
         Consume(TokenType.LeftParen, "Expect '(' after function declaration.");
         
         if (!Check(TokenType.RightParen))
@@ -297,7 +313,8 @@ public class Compiler
         // EndScope();
         
         // add the function to the current chunk's constants
-        Value functionValue = new Value(_functions.Pop(), ValueType.Function);
+        Value functionValue = new Value(newFunction, ValueType.Function);
+        _functions.Pop();
         int functionIndex = CurrentFunction().Chunk.AddConstant(functionValue);
         EmitByte(Instruction.DefFunction);
         EmitByte((byte)functionIndex);
@@ -399,10 +416,13 @@ public class Compiler
         // do ... end for normal 
         // does ... end for function definitions
         Match(afterFunctionDefinition ? TokenType.Does : TokenType.Do);
-        
-        Statement();
-        
-        Match(TokenType.End);
+
+        while (!Check(TokenType.End) && !Check(TokenType.Eof))
+        {
+            Declaration();
+        }
+
+        Consume(TokenType.End, "Unterminated block.");
     }
 
     private void BeginScope()
@@ -418,8 +438,6 @@ public class Compiler
     #endregion
     
     #region Expressions
-    
-
     private readonly Dictionary<TokenType, (bool, int)> _operatorInfo = new Dictionary<TokenType, (bool, int)>()
     {
         { TokenType.Or, (false, 0)},
@@ -461,8 +479,6 @@ public class Compiler
 
             // Emit the correct bytes to the chunk
             HandleOperator(op);
-            
-            break;
         }
     }
 

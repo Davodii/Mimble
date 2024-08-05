@@ -180,6 +180,15 @@ public class Chunk
                 case Instruction.LoadVar:
                     Console.WriteLine($"Load Var [{_code[++i].ToString("X2")}]");
                     break;
+                case Instruction.DefFunction:
+                    Console.WriteLine($"Define Function [{_code[++i].ToString("X2")}]");
+                    break;
+                case Instruction.BeginScope:
+                    Console.WriteLine("Begin Scope");
+                    break;
+                case Instruction.EndScope:
+                    Console.WriteLine("End Scope");
+                    break;
                 default:
                     Console.WriteLine("Unexpected instruction / value: " + i);
                     break;

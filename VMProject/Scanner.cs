@@ -6,8 +6,6 @@ public class Scanner(string source)
      * Take source code and produce Tokens on demand
      */
     
-    // TODO: chaneg the way Advance() works and use the return field
-
     private int _start;
     private int _current;
     private int _lines = 1;
@@ -101,7 +99,7 @@ public class Scanner(string source)
                 // function
                 // false
                 TokenType firstCheck = CheckTwoKeywords(1, "or", "alse", TokenType.For, TokenType.False);
-                return firstCheck != TokenType.Identifier ? CheckKeyword(1, "unction", TokenType.Function) : firstCheck;
+                return firstCheck == TokenType.Identifier ? CheckKeyword(1, "unction", TokenType.Function) : firstCheck;
             case 'i':
                 // if
                 // in
@@ -178,7 +176,13 @@ public class Scanner(string source)
         {
             switch (Peek())
             {
-                //TODO: handle comments maybe?
+                case '#':
+                    // TODO: make this better, check for end of file and stop second advance, 
+                    //       or include a way to skip newlines inside the compiler
+                    while (Peek() != '\n' && !IsAtEnd()) Advance();
+                    _lines++;
+                    Advance();
+                    break;
                 case ' ':
                 case '\r':
                 case '\t':
@@ -198,7 +202,6 @@ public class Scanner(string source)
         }
         
         string value = source.Substring(_start, _current - _start);
-        Console.WriteLine(value);
         Token token = new Token(type, _start, value, _lines);
         _start = _current;
         return token;

@@ -32,6 +32,11 @@ class Program
         StreamReader reader = new StreamReader(filePath);
         string source = reader.ReadToEnd();
 
+        if (source[^1] != '\n')
+        {
+            source += '\n';
+        }
+        
         VM vm = new VM();
         vm.Interpret(source);
     }
