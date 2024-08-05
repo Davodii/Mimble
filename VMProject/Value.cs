@@ -20,4 +20,9 @@ public class Value(object value, ValueType type)
         
         return value.Equals(((Value)obj).GetValue()) && type.Equals(((Value)obj).GetValueType());
     }
+
+    public override string ToString()
+    {
+        return $"[ {type.ToString()} Value: {value}]";
+    }
 }

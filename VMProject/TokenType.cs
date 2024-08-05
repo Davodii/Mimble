@@ -7,28 +7,25 @@ public enum TokenType
     Error,
     
     // SINGLE CHAR TOKENS
-    LeftParen,             // (
-    RightParen,            // )
-    SqLeftBrace,           // [
-    SqRightBrace,          // ]
+    LeftParen,              // (
+    RightParen,             // )
+    SqLeftBrace,            // [
+    SqRightBrace,           // ]
     Comma,                  // ,
-    // DOT,                    // .
     Minus,                  // -
     Plus,                   // +
     Slash,                  // /
     Star,                   // *
     
     // ONE OR MORE CHAR TOKENS
-    Bang,                   // !
-    BangEqual,             // !=
     Equal,                  // =
-    EqualEqual,            // ==
+    EqualEqual,             // ==
     Greater,                // >
-    GreaterEqual,          // >=
+    GreaterEqual,           // >=
     Less,                   // <
-    LessEqual,             // <=
+    LessEqual,              // <=
     Colon,                  // :
-    DoubleDot,             // ..
+    DoubleDot,              // ..
     
     // LITERALS
     Identifier,

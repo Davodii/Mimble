@@ -11,4 +11,6 @@ public abstract class Function(string identifier)
     {
         return $"<Function {Identifier} ({Arity} params)>";
     }
+
+    public abstract void PrintCode();
 }

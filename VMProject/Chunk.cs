@@ -85,6 +85,11 @@ public class Chunk
             value.GetValueType() == ValueType.Identifier && (string)value.GetValue() == token.GetValue());
     }
 
+    public int GetConstantCount()
+    {
+        return _constants.Count;
+    }
+
     public int GetCodeCount()
     {
         return _codeCount;
@@ -122,8 +127,7 @@ public class Chunk
                     Console.WriteLine("[ true ]");
                     break;
                 case Instruction.LoadConstant:
-                    i++;
-                    Console.WriteLine("Load Constant {" + _code[i] + "}");
+                    Console.WriteLine("Load Constant {" + _constants[_code[++i]] + "}");
                     break;
                 case Instruction.Add:
                     Console.WriteLine("Add");
@@ -175,13 +179,13 @@ public class Chunk
                     Console.WriteLine("Or");
                     break;
                 case Instruction.StoreVar:
-                    Console.WriteLine($"Store Var [{_code[++i].ToString("X")}]");
+                    Console.WriteLine($"Store Var [{_constants[_code[++i]]}]");
                     break;
                 case Instruction.LoadVar:
-                    Console.WriteLine($"Load Var [{_code[++i].ToString("X2")}]");
+                    Console.WriteLine($"Load Var [{_constants[_code[++i]]}]");
                     break;
                 case Instruction.DefFunction:
-                    Console.WriteLine($"Define Function [{_code[++i].ToString("X2")}]");
+                    Console.WriteLine($"Define Function [{_constants[_code[++i]]}]");
                     break;
                 case Instruction.BeginScope:
                     Console.WriteLine("Begin Scope");

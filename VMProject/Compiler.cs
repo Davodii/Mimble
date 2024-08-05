@@ -175,6 +175,7 @@ public class Compiler
             // Array initialization
         }
         
+        // TODO: remove this function and incorporate into Expression()
         else if (Check(TokenType.Equal))
         {
             Assign();
@@ -282,11 +283,11 @@ public class Compiler
         // ) 
         // block
         
-        Token identifier = _current;
+        Token functionIdentifier = _current;
         int argumentCount = 0;
 
-        _functions.Push(new UserDefined(identifier.GetValue(), new Chunk()));
-        Function newFunction = _functions.Peek();
+        _functions.Push(new UserDefined(functionIdentifier.GetValue(), new Chunk()));
+        UserDefined newFunction = _functions.Peek();
         
         Advance();
         Consume(TokenType.LeftParen, "Expect '(' after function declaration.");
@@ -297,7 +298,13 @@ public class Compiler
             {
                 argumentCount++;
                 // ! Define variable to the function's constants
-                Identifier();
+                Token identifier = _current;
+                // Add the identifier to the function's constants
+                int index = newFunction.Chunk.AddConstant(new Value(identifier.GetValue(), ValueType.Identifier));
+                EmitByte(Instruction.StoreVar);
+                EmitByte((byte)index);
+               
+                Advance();
             } while (Match(TokenType.Comma));
         }
 
@@ -305,7 +312,12 @@ public class Compiler
         Consume(TokenType.RightParen, "Expect ')' after parameters.");
         
         // ! Begin block
-        Block(true);
+        Consume(TokenType.Does, "Expect 'does' after function parameter list.");
+        Block();
+        
+        // TODO: make this better since there could already be a return inside the function
+        EmitByte(Instruction.Null);
+        EmitByte(Instruction.Return);
         
         // add the function to the current chunk's constants
         Value functionValue = new Value(newFunction, ValueType.UserDefinedFunction);
@@ -317,7 +329,6 @@ public class Compiler
 
     private void WhileStatement()
     {
-
         int loopStart = CurrentFunction().Chunk.GetCodeCount();
         Expression();
         
@@ -377,10 +388,10 @@ public class Compiler
         //     ElifStatements();
         // }
 
-        if (Match(TokenType.Else))
+        /*if (Match(TokenType.Else))
         {
             Statement();
-        }
+        }*/
 
         PatchJump(elseJump);
     }
@@ -406,11 +417,10 @@ public class Compiler
         // Should be good rn
     }
 
-    private void Block(bool afterFunctionDefinition = false)
+    private void Block()
     {
         // do ... end for normal 
         // does ... end for function definitions
-        Consume(afterFunctionDefinition ? TokenType.Does : TokenType.Do, "Expect block start.");
         Consume(TokenType.Eol, "Expect end of line after block start.");
 
         while (!Check(TokenType.End) && !Check(TokenType.Eof))
@@ -437,13 +447,26 @@ public class Compiler
     #region Expressions
     private readonly Dictionary<TokenType, (bool, int)> _operatorInfo = new Dictionary<TokenType, (bool, int)>()
     {
-        { TokenType.Or, (false, 0)},
-        { TokenType.And, (false, 1)},
+        // Mul / Div
+        { TokenType.Star, (false, 1)},  
+        { TokenType.Slash, (false, 1)},
+        
+        // Add / Sub
         { TokenType.Plus, (false, 2)},
         { TokenType.Minus, (false,2)},
-        { TokenType.Star, (false, 3)},
-        { TokenType.Slash, (false, 3)},
-        { TokenType.Not, (true, 4)}
+        
+        // Relational
+        { TokenType.Less, (false, 3)},
+        { TokenType.LessEqual, (false, 3)},
+        { TokenType.Greater, (false, 3)},
+        { TokenType.GreaterEqual, (false, 3)},
+        { TokenType.EqualEqual, (false, 3)},
+        
+        // Logical
+        { TokenType.Or, (false, 4)},
+        { TokenType.And, (false, 4)},
+        { TokenType.Not, (true, 5)}
+        
     };
     
     private void Expression(int minPrecedence = 0)
@@ -481,43 +504,32 @@ public class Compiler
 
     private void ComputeAtom()
     {
-        if (_current.GetType() == TokenType.LeftParen)
+        if (Match(TokenType.LeftParen))
         {
-            Advance();
             Expression();
-            
             Consume(TokenType.RightParen, "All groupings must be closed off.");
-            
-            Advance();
-            return;
         }
-
-        if (_current.GetType() == TokenType.Minus)
+        else if (Match(TokenType.Minus))
         {
             // ! Unary Minus
             HandleUnary(Instruction.Negate);
-            return;
         }
-
-        if (_current.GetType() == TokenType.Not)
+        else if (Match(TokenType.Not))
         {
             // ! Unary not
             HandleUnary(Instruction.Not);
-            return;
         }
-        
-        if (_current.GetType() == TokenType.False || _current.GetType() == TokenType.True || 
-            _current.GetType() == TokenType.Null)
+        else if (Match(TokenType.False) || Match(TokenType.True) || Match(TokenType.Null))
         {
             // ! Literal
             HandleLiteral();
         }
-        else if (_current.GetType() == TokenType.Number || _current.GetType() == TokenType.String)
+        else if (Match(TokenType.Number) || Match(TokenType.String))
         {
             // ! Handle the constant 
             HandleConstant();
         }
-        else if (_current.GetType() == TokenType.Identifier)
+        else if (Match(TokenType.Identifier))
         {
             // ! get local / global variable
             HandleIdentifier();
@@ -526,13 +538,10 @@ public class Compiler
         {
             throw new CompileTimeException(_current, $"Unexpected token '{_current}'");
         }
-        
-        Advance();
     }
 
     private void HandleUnary(Instruction instruction)
     {
-        Advance();
         ComputeAtom();
         EmitByte(instruction);
     }
@@ -540,7 +549,7 @@ public class Compiler
     private void HandleLiteral()
     {
         // Handle false and true literals
-        EmitByte(_current.GetValue() == "false" ? Instruction.False : Instruction.True);
+        EmitByte(_previous.GetValue() == "false" ? Instruction.False : Instruction.True);
     }
 
     private void HandleConstant()
@@ -548,16 +557,17 @@ public class Compiler
         // Handle constants stored inside the chunk
         // Emit a byte to the stack 
 
+        Token constant = _previous;
         Value val;
         
-        if (_current.GetType() == TokenType.Number)
+        if (constant.GetType() == TokenType.Number)
         {
-            double asDouble = double.Parse(_current.GetValue());
+            double asDouble = double.Parse(constant.GetValue());
             val = new Value(asDouble, ValueType.Number);
         }
-        else if (_current.GetType() == TokenType.String)
+        else if (constant.GetType() == TokenType.String)
         {
-            val = new Value(_current.GetValue(), ValueType.String);
+            val = new Value(constant.GetValue(), ValueType.String);
         }
         else
         {
@@ -578,24 +588,39 @@ public class Compiler
         // a[...]
         // a(...)
 
-        Token identifier = _current;
+        Token identifier = _previous;
         
         // TODO: compare between arrays, variables and functions
         
         // Get the index of the identifier inside the current chunk's constants
-        int index = CurrentFunction().Chunk.GetConstantIndex(identifier);
+        int index = -1;
 
-        if (index == -1)
+        try
+        {
+            index = CurrentFunction().Chunk.GetConstantIndex(identifier);
+        }
+        catch
         {
             // Add the constant to the constants list
             index = CurrentFunction().Chunk.AddConstant(new Value(identifier.GetValue(), ValueType.Identifier));
         }
         
-        // Get the identifier and push onto the stack
-        EmitByte(Instruction.LoadVar);
+        if (Check(TokenType.LeftParen))
+        {
+            FunctionCall();
+        }
+        else if (Check(TokenType.SqLeftBrace))
+        {
+            // array indexing 
+        }
+        else
+        {
+            // Get the identifier and push onto the stack
+            EmitByte(Instruction.LoadVar);
         
-        // TODO: maybe introduce a LoadConstant 2x instruction where two bytes are used as the index
-        EmitByte((byte)index);
+            // TODO: maybe introduce a LoadConstant 2x instruction where two bytes are used as the index
+            EmitByte((byte)index);
+        }
     }
 
     private void HandleOperator(TokenType op)
@@ -619,6 +644,9 @@ public class Compiler
                 break;
             case TokenType.Or:
                 EmitByte(Instruction.Or);
+                break;
+            case TokenType.Not:
+                EmitByte(Instruction.Not);
                 break;
             case TokenType.EqualEqual:
                 EmitByte(Instruction.Equal);
@@ -645,13 +673,18 @@ public class Compiler
         // Check if the given token is an operator (either binary or unary)
         switch (token.GetType())
         {
-            case TokenType.Minus:
-            case TokenType.Plus:
-            case TokenType.Slash:
-            case TokenType.Star:
-            case TokenType.And:
-            case TokenType.Or:
-            case TokenType.Not:
+            case TokenType.Minus:       // -
+            case TokenType.Plus:        // +
+            case TokenType.Slash:       // /
+            case TokenType.Star:        // *
+            case TokenType.And:         // and
+            case TokenType.Or:          // or
+            case TokenType.Not:         // not
+            case TokenType.Less:        // <
+            case TokenType.LessEqual:   // <=
+            case TokenType.Greater:     // >
+            case TokenType.GreaterEqual:// >=
+            case TokenType.EqualEqual:  // ==
                 return true;
         }
         

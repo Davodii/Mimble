@@ -4,16 +4,16 @@ namespace VMProject.Functions;
 
 public class PrintFn : Native
 {
-    private static readonly PrintFn _printFn = new PrintFn();
+    private static readonly PrintFn PPrintFn = new PrintFn();
 
     private PrintFn() : base("print")
     {
-        
+        this.Arity = 1;
     }
 
     public static PrintFn GetPrintFn()
     {
-        return _printFn;
+        return PPrintFn;
     }
     
     public override void Execute(Stack<Value> stack)

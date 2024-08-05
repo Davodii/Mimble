@@ -239,8 +239,8 @@ public class Scanner(string source)
             case '\n':
                 _lines++;
                 return MakeToken(TokenType.Eol);
-            case '!':
-                return MakeToken(Match('=') ? TokenType.BangEqual : TokenType.Bang);
+            /*case '!':
+                return MakeToken(Match('=') ? TokenType.BangEqual : TokenType.Bang);*/
             case '=':
                 return MakeToken(Match('=') ? TokenType.EqualEqual : TokenType.Equal);
             case '>':

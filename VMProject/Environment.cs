@@ -1,5 +1,3 @@
-using System.Security.AccessControl;
-
 namespace VMProject;
 
 public class Environment(Environment enclosing = null!)
@@ -18,7 +16,7 @@ public class Environment(Environment enclosing = null!)
         {
             _locals[name] = value;
         } 
-        else if (_enclosing != null)
+        else if (_enclosing != null && _enclosing.Defined(name))
         {
             // Check if the variable exists in the enclosing environment
             _enclosing.Assign(name, value);
@@ -26,8 +24,7 @@ public class Environment(Environment enclosing = null!)
         else
         {
             // No such variable exists, create it
-            Define(name);
-            _locals[name] = value;
+            _locals.Add(name, value);
         }
     }
 

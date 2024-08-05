@@ -226,6 +226,42 @@ public class VM
             Push(new Value(true, ValueType.Boolean));
         }
     }
+
+    private void Less()
+    {
+        Value val1 = Pop();
+        Value val2 = Pop();
+
+        if (!AreNumbers(val1, val2))
+        {
+            throw new RunTimeException(0, "Expected two numbers.");
+        }
+
+        bool greater = (double)val2.GetValue() < (double)val1.GetValue();
+        Push(new Value(greater, ValueType.Boolean)); 
+    }
+
+    private void Greater()
+    {
+        Value val1 = Pop();
+        Value val2 = Pop();
+
+        if (!AreNumbers(val1, val2))
+        {
+            throw new RunTimeException(0, "Expected two numbers.");
+        }
+
+        bool greater = (double)val2.GetValue() > (double)val1.GetValue();
+        Push(new Value(greater, ValueType.Boolean));
+    }
+
+    private void Equal()
+    {
+        Value val1 = Pop();
+        Value val2 = Pop();
+                    
+        Push(new Value(val1.Equals(val2), ValueType.Boolean));
+    }
     
     #endregion
     
@@ -350,42 +386,14 @@ public class VM
                     Negate();
                     break;
                 case Instruction.Equal: // ==
-                {
-                    Value val1 = Pop();
-                    Value val2 = Pop();
-                    
-                    Push(new Value(val1.Equals(val2), ValueType.Boolean));
-                    
+                    Equal();
                     break;
-                }
                 case Instruction.Greater: // >
-                {
-                    Value val1 = Pop();
-                    Value val2 = Pop();
-
-                    if (!AreNumbers(val1, val2))
-                    {
-                        throw new RunTimeException(0, "Expected two numbers.");
-                    }
-
-                    bool greater = (double)val2.GetValue() > (double)val1.GetValue();
-                    Push(new Value(greater, ValueType.Boolean));
+                    Greater();
                     break;
-                }
                 case Instruction.Less: // <
-                {
-                    Value val1 = Pop();
-                    Value val2 = Pop();
-
-                    if (!AreNumbers(val1, val2))
-                    {
-                        throw new RunTimeException(0, "Expected two numbers.");
-                    }
-
-                    bool greater = (double)val2.GetValue() < (double)val1.GetValue();
-                    Push(new Value(greater, ValueType.Boolean));
+                    Less();
                     break;
-                }
                 case Instruction.And:
                     And();
                     break;
@@ -491,16 +499,28 @@ public class VM
                 }
                 case Instruction.Call:
                 {
+                    
                     // Function value already stored on the stack
                     Value functionValue = Pop();
+                    Function function = (Function)functionValue.GetValue();
+                    
+                    // Get the arity
+                    int argumentCount = ReadByte();
+
+                    if (argumentCount != function.Arity)
+                    {
+                        string relative = "not";
+                        if (argumentCount < function.Arity) relative = "too few";
+                        else if (argumentCount > function.Arity) relative = "too many";
+                        else relative = "no";
+                        throw new RunTimeException(0, $"The function was called with {relative} arguments.");
+                    }
 
                     if (functionValue.GetValueType() == ValueType.UserDefinedFunction)
                     {
-                        // TODO: make this work with the main function 
                         Environment environment = new Environment(CurrentFrame().GetEnvironment());
-
-                        CallFrame frame = new CallFrame((UserDefined)functionValue.GetValue(), environment);
-                    
+                        CallFrame frame = new CallFrame((UserDefined)function, environment);
+                        
                         // Add the frame onto the call stack
                         _frames.Push(frame);
                         break;
@@ -508,9 +528,7 @@ public class VM
                     else if (functionValue.GetValueType() == ValueType.NativeFunction)
                     {
                         // Call the native function
-                        Native function = (Native)functionValue.GetValue();
-                        
-                        function.Execute(_valueStack);
+                        ((Native)function).Execute(_valueStack);
                         break;
                     }
                     
@@ -553,7 +571,11 @@ public class VM
         Environment mainEnvironment = new Environment(global);
         _frames.Push(new CallFrame(mainFunction, mainEnvironment));
         
+        // ! Testing purposes only
+        mainFunction.PrintCode();
+        
         // Begin execution of the code
-        Run();
+        //Run();
+        
     }
 }
