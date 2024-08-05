@@ -1,9 +1,11 @@
+using VMProject.Functions;
+
 namespace VMProject;
 
-public class CallFrame(Function function, Environment environment)
+public class CallFrame(UserDefined function, Environment environment)
 {
     private Environment _environment  = environment;
-    public Function Function { get; } = function;
+    public UserDefined Function { get; } = function;
     private int _ip = 0;
 
     public byte ReadByte()

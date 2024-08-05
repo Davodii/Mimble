@@ -1,10 +1,11 @@
-namespace VMProject;
+namespace VMProject.Functions;
 
-public class Function(string identifier, Chunk chunk)
+public abstract class Function(string identifier)
 {
     public string Identifier { get; } = identifier;
-    public Chunk Chunk { get;  } = chunk;
+    
     public int Arity { get; set; } = 0;
+
 
     public override string ToString()
     {

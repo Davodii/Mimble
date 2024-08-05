@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Globalization;
 using System.Runtime.Intrinsics.X86;
+using VMProject.Functions;
 
 namespace VMProject;
 
@@ -13,7 +14,7 @@ public class VM
     private readonly Stack<Value> _valueStack = new();
     private readonly Stack<CallFrame> _frames = new();
     
-    private Function CurrentFunction()
+    private UserDefined CurrentFunction()
     {
         return CurrentFrame().Function;
     }
@@ -493,20 +494,27 @@ public class VM
                     // Function value already stored on the stack
                     Value functionValue = Pop();
 
-                    if (functionValue.GetValueType() != ValueType.Function)
+                    if (functionValue.GetValueType() == ValueType.UserDefinedFunction)
                     {
-                        throw new RunTimeException(0, "Identifier is not a function.");
+                        // TODO: make this work with the main function 
+                        Environment environment = new Environment(CurrentFrame().GetEnvironment());
+
+                        CallFrame frame = new CallFrame((UserDefined)functionValue.GetValue(), environment);
+                    
+                        // Add the frame onto the call stack
+                        _frames.Push(frame);
+                        break;
                     }
-
-                    // TODO: make this work with the main function 
-                    Environment environment = new Environment(CurrentFrame().GetEnvironment());
-
-                    CallFrame frame = new CallFrame((Function)functionValue.GetValue(), environment);
+                    else if (functionValue.GetValueType() == ValueType.NativeFunction)
+                    {
+                        // Call the native function
+                        Native function = (Native)functionValue.GetValue();
+                        
+                        function.Execute(_valueStack);
+                        break;
+                    }
                     
-                    // Add the frame onto the call stack
-                    _frames.Push(frame);
-                    
-                    break;
+                    throw new RunTimeException(0, $"Identifier '{functionValue.GetValueType()}' is not a function.");
                 }
                 case Instruction.Return:
                 {
@@ -536,16 +544,16 @@ public class VM
     {
         // Compile the source program
         Compiler compiler = new Compiler();
-        Function mainFunction = compiler.Compile(source);
+        UserDefined mainFunction = compiler.Compile(source);
         
-        mainFunction.Chunk.PrintChunk();
+        // Create the global environment
+        Environment global = GlobalScope.GetGlobalScope();
         
         // Initialize the main function frame
-        Environment mainEnvironment = new Environment();
+        Environment mainEnvironment = new Environment(global);
         _frames.Push(new CallFrame(mainFunction, mainEnvironment));
         
         // Begin execution of the code
         Run();
-
     }
 }

@@ -1,3 +1,5 @@
+using VMProject.Functions;
+
 namespace VMProject;
 
 public class Compiler
@@ -8,9 +10,9 @@ public class Compiler
     private Token _current = null!;
     
     // ! Compiling
-    private readonly Stack<Function> _functions = new Stack<Function>();
+    private readonly Stack<UserDefined> _functions = new Stack<UserDefined>();
     
-    private Function CurrentFunction()
+    private UserDefined CurrentFunction()
     {
         return _functions.Peek();
     }
@@ -283,12 +285,8 @@ public class Compiler
         Token identifier = _current;
         int argumentCount = 0;
 
-        _functions.Push(new Function(identifier.GetValue(), new Chunk()));
+        _functions.Push(new UserDefined(identifier.GetValue(), new Chunk()));
         Function newFunction = _functions.Peek();
-        
-        // ! Begin a new scope
-        // ! Might not need to do this for here since a function has its own environmnet anyway
-        // BeginScope();
         
         Advance();
         Consume(TokenType.LeftParen, "Expect '(' after function declaration.");
@@ -309,11 +307,8 @@ public class Compiler
         // ! Begin block
         Block(true);
         
-        // Handle function code and what not
-        // EndScope();
-        
         // add the function to the current chunk's constants
-        Value functionValue = new Value(newFunction, ValueType.Function);
+        Value functionValue = new Value(newFunction, ValueType.UserDefinedFunction);
         _functions.Pop();
         int functionIndex = CurrentFunction().Chunk.AddConstant(functionValue);
         EmitByte(Instruction.DefFunction);
@@ -415,7 +410,8 @@ public class Compiler
     {
         // do ... end for normal 
         // does ... end for function definitions
-        Match(afterFunctionDefinition ? TokenType.Does : TokenType.Do);
+        Consume(afterFunctionDefinition ? TokenType.Does : TokenType.Do, "Expect block start.");
+        Consume(TokenType.Eol, "Expect end of line after block start.");
 
         while (!Check(TokenType.End) && !Check(TokenType.Eof))
         {
@@ -423,6 +419,7 @@ public class Compiler
         }
 
         Consume(TokenType.End, "Unterminated block.");
+        Consume(TokenType.Eol, "Expect end of line after 'end'.");
     }
 
     private void BeginScope()
@@ -663,12 +660,12 @@ public class Compiler
     
     #endregion
 
-    public Function Compile(string source)
+    public UserDefined Compile(string source)
     {
         // Initialize the scanner
         _scanner = new Scanner(source);
 
-        Function main = new Function("main", new Chunk());
+        UserDefined main = new UserDefined("main", new Chunk());
         _functions.Push(main);
         
         // Parse the source text and compile to the chunk
@@ -680,7 +677,6 @@ public class Compiler
         }
         
         ReturnStatement();
-
         
         return main;
     }

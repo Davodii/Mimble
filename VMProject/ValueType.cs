@@ -7,6 +7,7 @@ public enum ValueType
     Number,
     String,
     Identifier,         // ! used for variables
-    Function,
+    UserDefinedFunction,
+    NativeFunction,
     Object                      // Will be used for things like arrays and other values
 }

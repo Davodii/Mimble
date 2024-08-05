@@ -151,7 +151,6 @@ public class Scanner(string source)
     private Token SString()
     {
         // Still on "
-        Advance();
         _start = _current;
         
         while (Peek() != '"' && !IsAtEnd())
