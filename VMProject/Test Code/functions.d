@@ -1,7 +1,8 @@
-function test() does
-    a = 10
-    b = 5
-    return a + b
+function fun() does
+    print("fun")
 end
 
-test()
+# apparently functions can be first class objects
+
+a = fun
+a()

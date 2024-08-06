@@ -548,6 +548,8 @@ public class VM
 
                     // Store the value inside the identifier in the list
                     CurrentFrame().GetEnvironment().Assign(identifier, val);
+                    
+                    Push(val);
                     break;
                 }
                 case Instruction.LoadVar:

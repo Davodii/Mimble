@@ -47,9 +47,9 @@ public class Environment(Environment enclosing = null!)
     {
         if (_locals.ContainsKey(identifier))
         {
-            return false;
+            return true;
         }
-        else if (_enclosing == null)
+        if (_enclosing == null)
         {
             return false;
         }

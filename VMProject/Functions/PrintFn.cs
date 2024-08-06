@@ -23,5 +23,8 @@ public class PrintFn : Native
         
         // Print the value to the console
         Console.WriteLine(top.GetValue());
+        
+        // Push the "value" of the function the stack
+        stack.Push(new Value(this.ToString(), ValueType.String));
     }
 }

@@ -142,46 +142,10 @@ public class Compiler
             Block();
             EndScope();
         }
-        else if (Match(TokenType.Identifier))
-        {
-            Identifier();
-        }
         else
         {
             ExpressionStatement();
         }
-    }
-
-    private void Identifier()
-    {
-        //TODO: change the signature of this function, it irks me
-        
-        // ! Identifier
-        // a = ...      - Variable Initialization
-        // a[i] = ...   - Array indexing and initialization 
-        // Function call
-
-        // Get the identifier as a string
-        // Store the string in the current chunk's constants value
-        
-        // TODO: check if we are accessing an index in the array 
-        if (Check(TokenType.LeftParen))
-        {
-            FunctionCall();
-        }
-
-        else if (Check(TokenType.SqLeftBrace))
-        {
-            // Array initialization
-        }
-        
-        // TODO: remove this function and incorporate into Expression()
-        else if (Check(TokenType.Equal))
-        {
-            Assign();
-        }
-        
-        Consume(TokenType.Eol, "Expect expression to be terminated.");
     }
 
     private void Assign()
@@ -272,6 +236,7 @@ public class Compiler
     private void ExpressionStatement()
     {
         Expression();
+        EmitByte(Instruction.Pop);
         Consume(TokenType.Eol, "Expect expression to be terminated.");
     }
 
@@ -312,9 +277,8 @@ public class Compiler
         Consume(TokenType.RightParen, "Expect ')' after parameters.");
         
         // ! Begin block
-        Block();
+        Block(afterFunction:true);
         
-        // TODO: make this better since there could already be a return inside the function
         EmitByte(Instruction.Null);
         EmitByte(Instruction.Return);
         
@@ -328,6 +292,7 @@ public class Compiler
 
     private void WhileStatement()
     {
+        BeginScope();
         int loopStart = CurrentFunction().Chunk.GetCodeCount();
         Expression();
         
@@ -335,12 +300,11 @@ public class Compiler
         int exitJump = EmitJump(Instruction.JumpIfFalse);
         EmitByte(Instruction.Pop);
         
-        BeginScope();
         Block();
-        EndScope();
         
         // Loop back to the expression
         EmitLoop(loopStart);
+        EndScope();
         
         // Patch the jump
         PatchJump(exitJump);
@@ -355,6 +319,10 @@ public class Compiler
         // in
         // expression ??? 
         // block
+        
+        // for identifier in Expression() do
+        // Statement list
+        // end
 
         //Identifier();
 
@@ -451,6 +419,9 @@ public class Compiler
     #region Expressions
     private readonly Dictionary<TokenType, (bool, int)> _operatorInfo = new Dictionary<TokenType, (bool, int)>()
     {
+        // Assignment
+        { TokenType.Equal, (true, 0)},
+        
         // Mul / Div
         { TokenType.Star, (false, 1)},  
         { TokenType.Slash, (false, 1)},
@@ -480,7 +451,7 @@ public class Compiler
         
         // Compute the left hand side of the expression
         // Push the result(s) to the stack  
-        ComputeAtom();
+        bool grouping = ComputeAtom();
         
         // Continue until an operator of lower precedence than minPrec is found
         while (true)
@@ -492,28 +463,31 @@ public class Compiler
             
             // Get the precedence and associativity
             var opInfoTuple = _operatorInfo[_current.GetType()];
-            var op = _current.GetType();
+            var op = _current;
             int precedence = opInfoTuple.Item2;
             bool rightAssociative = opInfoTuple.Item1;
             int nextMinPrecedence = rightAssociative ? precedence : precedence + 1;
+
+            int countBeforeRightExpr = CurrentFunction().Chunk.GetCodeCount();
             
             // Consume the current token and prepare the next one for the recursive call
             Advance();
             Expression(nextMinPrecedence);
 
             // Emit the correct bytes to the chunk
-            HandleOperator(op);
+            HandleOperator(op, grouping, countBeforeRightExpr - 2);
         }
     }
 
-    private void ComputeAtom()
+    private bool ComputeAtom()
     {
         if (Match(TokenType.LeftParen))
         {
             Expression();
             Consume(TokenType.RightParen, "All groupings must be closed off.");
+            return true;
         }
-        else if (Match(TokenType.Minus))
+        if (Match(TokenType.Minus))
         {
             // ! Unary Minus
             HandleUnary(Instruction.Negate);
@@ -542,6 +516,8 @@ public class Compiler
         {
             throw new CompileTimeException(_current, $"Unexpected token '{_current}'");
         }
+
+        return false;
     }
 
     private void HandleUnary(Instruction instruction)
@@ -627,8 +603,11 @@ public class Compiler
         }
     }
 
-    private void HandleOperator(TokenType op)
+    private void HandleOperator(Token token, bool grouping, int indexOfLoadVar)
     {
+        // TODO: change the signature of this function to be betterer
+        
+        TokenType op = token.GetType();
         switch (op)
         {
             case TokenType.Plus:
@@ -669,6 +648,22 @@ public class Compiler
                 EmitByte(Instruction.Greater);
                 EmitByte(Instruction.Not);
                 break;
+            case TokenType.Equal:
+                // Remote the "LOAD VAR index" code from the chunk
+                // and instead put "STORE VAR" 
+
+                // if (!identifier) throw new CompileTimeException(token, "Can only assign values to an identifier, not an expression.");
+                if (CurrentFunction().Chunk.GetByte(indexOfLoadVar) != (byte)Instruction.LoadVar || grouping)
+                    throw new CompileTimeException(token,
+                        "Can only assign values to an identifier, not an expression.");
+                
+                CurrentFunction().Chunk.RemoveInstruction(indexOfLoadVar);
+                byte identifierIndex = CurrentFunction().Chunk.RemoveInstruction(indexOfLoadVar);
+                
+                // Add the store var
+                EmitByte(Instruction.StoreVar);
+                EmitByte(identifierIndex);
+                break;
         }
     }
     
@@ -689,6 +684,7 @@ public class Compiler
             case TokenType.Greater:     // >
             case TokenType.GreaterEqual:// >=
             case TokenType.EqualEqual:  // ==
+            case TokenType.Equal:       // =
                 return true;
         }
         

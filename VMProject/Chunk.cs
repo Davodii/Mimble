@@ -6,9 +6,7 @@ public class Chunk
     private const int GrowRate = 2;
 
     // Store the array of bytecode instructions
-    private byte[] _code;
-    private int _codeCapacity;
-    private int _codeCount;
+    private List<byte> _code;
     
     // Store constant values found within this chunk
     // Also used to get variable identifiers
@@ -20,34 +18,22 @@ public class Chunk
     public Chunk()
     {
         // Initialize the chunk
-        _codeCount = 0;
-        _codeCapacity = InitSize;
-        _code = new byte[_codeCapacity];
+        _code = new List<byte>();
         _constants = new List<Value>();
-
     }
 
     public void Write(byte data, int line)
     {
-        // Check if there is still room in the chunk
-        if (_codeCount == _codeCapacity)
-        {
-            // Grow the array capacity by the GrowRate
-            Array.Resize(ref _code, _codeCapacity * GrowRate);
-            _codeCapacity *= GrowRate;
-        }
-        
         // Add the line to the info
-        _lineNumberTable.AddIndexToLine(line, _codeCount);
+        _lineNumberTable.AddIndexToLine(line, _code.Count);
         
         // Write the operator
-        _code[_codeCount] = data;
-        _codeCount++;
+        _code.Add(data);
     }
 
     public void Write(int offset, byte data)
     {
-        if (offset >= _codeCount)
+        if (offset >= GetCodeCount() || offset < 0)
         {
             throw new IndexOutOfRangeException( "Offset outside the initialized array of code.");
         }
@@ -55,6 +41,21 @@ public class Chunk
         _code[offset] = data;
     }
 
+    public byte RemoveInstruction(int offset)
+    {
+        if (offset >= GetCodeCount() || offset < 0)
+        {
+            throw new IndexOutOfRangeException( "Offset outside the initialized array of code.");
+        }
+
+        byte instruction = _code[offset];
+        
+        // Remove the item at the offset from the code
+         _code.RemoveAt(offset);
+
+         return instruction;
+    }
+    
     public int AddConstant(Value value)
     {
         _constants.Add(value);
@@ -63,7 +64,7 @@ public class Chunk
 
     public Value GetConstant(int index)
     {
-        if (index >= _constants.Count)
+        if (index >= GetConstantCount())
         {
             throw new IndexOutOfRangeException("Index outside of code array range.");
         }
@@ -92,12 +93,12 @@ public class Chunk
 
     public int GetCodeCount()
     {
-        return _codeCount;
+        return _code.Count;
     }
     
     public byte GetByte(int index)
     {
-        if (index >= _codeCount)
+        if (index >= GetCodeCount())
         {
             throw new IndexOutOfRangeException("Index out of range of code array.");
         }
@@ -109,7 +110,7 @@ public class Chunk
 
     public void PrintChunk()
     {
-        for (int i = 0; i < _codeCount; i++)
+        for (int i = 0; i < GetCodeCount(); i++)
         {
             Console.Write($"{_lineNumberTable.GetLineInfo(i).ToString(),3}-{i.ToString(),-4} : ");
             switch ((Instruction)_code[i])
