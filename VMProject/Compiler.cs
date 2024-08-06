@@ -136,7 +136,7 @@ public class Compiler
         {
             ReturnStatement();
         }
-        else if (Match(TokenType.Do))
+        else if (Check(TokenType.Do))
         {
             BeginScope();
             Block();
@@ -312,7 +312,6 @@ public class Compiler
         Consume(TokenType.RightParen, "Expect ')' after parameters.");
         
         // ! Begin block
-        Consume(TokenType.Does, "Expect 'does' after function parameter list.");
         Block();
         
         // TODO: make this better since there could already be a return inside the function
@@ -336,7 +335,9 @@ public class Compiler
         int exitJump = EmitJump(Instruction.JumpIfFalse);
         EmitByte(Instruction.Pop);
         
-        Statement();
+        BeginScope();
+        Block();
+        EndScope();
         
         // Loop back to the expression
         EmitLoop(loopStart);
@@ -417,10 +418,13 @@ public class Compiler
         // Should be good rn
     }
 
-    private void Block()
+    private void Block(bool afterFunction = false)
     {
         // do ... end for normal 
         // does ... end for function definitions
+        
+        Consume(afterFunction ? TokenType.Does : TokenType.Do, "Expect block start.");
+        
         Consume(TokenType.Eol, "Expect end of line after block start.");
 
         while (!Check(TokenType.End) && !Check(TokenType.Eof))

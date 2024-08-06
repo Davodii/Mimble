@@ -110,6 +110,30 @@ public class VM
     {
         return val.GetValueType() == ValueType.Boolean && (bool)val.GetValue() == false;
     }
+
+    private void PrintStackTrace()
+    {
+        Console.WriteLine("Value Stack:");
+        
+        // Print the contents of the values stack
+        foreach (var value in _valueStack)
+        {
+            Console.Write($" [{value}] ");
+        }
+
+        Console.WriteLine();
+    }
+
+    private void PrintCallStack()
+    {
+        Console.WriteLine("Frame Stack:");
+        foreach (var frame in _frames)
+        {
+            Console.Write($" [{frame.ToString()}] ");
+        }
+
+        Console.WriteLine();
+    }
     
     #endregion
     
@@ -341,6 +365,57 @@ public class VM
         // Define the function inside the current environment
         _frames.Peek().GetEnvironment().Assign(function.Identifier, value);
     }
+
+    private void DefineFunction()
+    {
+        Value functionValue = CurrentFunction().Chunk.GetConstant(ReadByte());
+        string identifier = ((Function)functionValue.GetValue()).Identifier;
+
+        // Check to see if the function is already defined
+        if (CurrentFrame().GetEnvironment().Defined(identifier))
+        {
+            throw new RunTimeException(0, "Identifier is already defined.");
+        }
+
+        CurrentFrame().GetEnvironment().Assign(identifier, functionValue);
+    }
+    
+    private void CallFunction() 
+    {
+        // Function value already stored on the stack
+        Value functionValue = Pop();
+        Function function = (Function)functionValue.GetValue();
+                    
+        // Get the arity
+        int argumentCount = ReadByte();
+
+        if (argumentCount != function.Arity)
+        {
+            string relative = "not";
+            if (argumentCount < function.Arity) relative = "too few";
+            else if (argumentCount > function.Arity) relative = "too many";
+            else relative = "no";
+            throw new RunTimeException(0, $"The function was called with {relative} arguments.");
+        }
+
+        if (functionValue.GetValueType() == ValueType.UserDefinedFunction)
+        {
+            Environment environment = new Environment(CurrentFrame().GetEnvironment());
+            CallFrame frame = new CallFrame((UserDefined)function, environment);
+                        
+            // Add the frame onto the call stack
+            _frames.Push(frame);
+            return;
+        }
+        if (functionValue.GetValueType() == ValueType.NativeFunction)
+        {
+            // Call the native function
+            ((Native)function).Execute(_valueStack);
+            return;
+        }
+                    
+        throw new RunTimeException(0, $"Identifier '{functionValue.GetValueType()}' is not a function.");
+    }
     
     #endregion
     
@@ -352,6 +427,9 @@ public class VM
             // Read the current instruction
             Instruction instruction = (Instruction)ReadByte();
 
+            // PrintStackTrace();
+            // PrintCallStack();
+            
             switch (instruction)
             {
                 case Instruction.Pop:
@@ -397,7 +475,6 @@ public class VM
                 case Instruction.And:
                     And();
                     break;
-                
                 case Instruction.Or:
                     Or();
                     break;
@@ -484,56 +561,11 @@ public class VM
                     break;
                 }
                 case Instruction.DefFunction:
-                {
-                    Value functionValue = CurrentFunction().Chunk.GetConstant(ReadByte());
-                    string identifier = ((Function)functionValue.GetValue()).Identifier;
-
-                    // Check to see if the function is already defined
-                    if (CurrentFrame().GetEnvironment().Defined(identifier))
-                    {
-                        throw new RunTimeException(0, "Identifier is already defined.");
-                    }
-
-                    CurrentFrame().GetEnvironment().Assign(identifier, functionValue);
+                    DefineFunction();
                     break;
-                }
                 case Instruction.Call:
-                {
-                    
-                    // Function value already stored on the stack
-                    Value functionValue = Pop();
-                    Function function = (Function)functionValue.GetValue();
-                    
-                    // Get the arity
-                    int argumentCount = ReadByte();
-
-                    if (argumentCount != function.Arity)
-                    {
-                        string relative = "not";
-                        if (argumentCount < function.Arity) relative = "too few";
-                        else if (argumentCount > function.Arity) relative = "too many";
-                        else relative = "no";
-                        throw new RunTimeException(0, $"The function was called with {relative} arguments.");
-                    }
-
-                    if (functionValue.GetValueType() == ValueType.UserDefinedFunction)
-                    {
-                        Environment environment = new Environment(CurrentFrame().GetEnvironment());
-                        CallFrame frame = new CallFrame((UserDefined)function, environment);
-                        
-                        // Add the frame onto the call stack
-                        _frames.Push(frame);
-                        break;
-                    }
-                    else if (functionValue.GetValueType() == ValueType.NativeFunction)
-                    {
-                        // Call the native function
-                        ((Native)function).Execute(_valueStack);
-                        break;
-                    }
-                    
-                    throw new RunTimeException(0, $"Identifier '{functionValue.GetValueType()}' is not a function.");
-                }
+                    CallFunction();
+                    break;
                 case Instruction.Return:
                 {
                     // Return the current function
@@ -575,7 +607,7 @@ public class VM
         mainFunction.PrintCode();
         
         // Begin execution of the code
-        //Run();
+        Run();
         
     }
 }

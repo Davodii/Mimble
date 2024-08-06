@@ -157,14 +157,13 @@ public class Chunk
                     Console.WriteLine("Not");
                     break;
                 case Instruction.Jump:
-                    Console.WriteLine($"Jump +0x{_code[++i].ToString("X2")}{_code[i].ToString("X2")}");
+                    Console.WriteLine($"Jump +0x{_code[++i].ToString("X2")}{_code[++i].ToString("X2")}");
                     break;
                 case Instruction.JumpIfFalse:
                     Console.WriteLine($"Jump if false +0x{_code[++i].ToString("X2")}{_code[++i].ToString("X2")}");
-                    i += 2;
                     break;
                 case Instruction.Loop:
-                    Console.WriteLine($"Loop -{_code[++i].ToString("X2")}{_code[i].ToString("X2")}");
+                    Console.WriteLine($"Loop -{_code[++i].ToString("X2")}{_code[++i].ToString("X2")}");
                     break;
                 case Instruction.Call:
                     Console.WriteLine($"Call {_code[++i]}");
