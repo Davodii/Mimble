@@ -1,3 +1,4 @@
+using VMProject.Functions.Lists;
 namespace VMProject.Functions;
 
 public static class GlobalScope
@@ -22,7 +23,13 @@ public static class GlobalScope
         Native print = PrintFn.GetPrintFn();
         Global.Assign("print", new Value(print, ValueType.NativeFunction));
         
-        // ! Len
+        // ! Length
+        Native length = LengthFn.GetLengthFn();
+        Global.Assign("length", new Value(length, ValueType.NativeFunction));
+        
+        // ! Append
+        Native append = AppendFn.GetAppendFn();
+        Global.Assign("append", new Value(append, ValueType.NativeFunction));
     }
 
     public static Environment GetGlobalScope()

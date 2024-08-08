@@ -105,6 +105,11 @@ public class Chunk
 
         return _code[index];
     }
+
+    public int GetLine(int codeIndex)
+    {
+        return _lineNumberTable.GetLineInfo(codeIndex);
+    }
     
     #region Utility Functions
 

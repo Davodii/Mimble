@@ -6,8 +6,8 @@ public enum ValueType
     Boolean,
     Number,
     String,
-    Identifier,         // ! used for variables
+    Identifier,                 // ! used for variables
     UserDefinedFunction,
     NativeFunction,
-    Object                      // Will be used for things like arrays and other values
+    List,
 }

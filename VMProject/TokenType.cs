@@ -31,6 +31,8 @@ public enum TokenType
     Identifier,
     String,
     Number,
+    Range,
+    List,
     Null,
     
     // KEYWORDS

@@ -1,14 +1,12 @@
 namespace VMProject.Functions;
 
-// TODO: make this a singleton?
-
 public class PrintFn : Native
 {
     private static readonly PrintFn PPrintFn = new PrintFn();
 
     private PrintFn() : base("print")
     {
-        this.Arity = 1;
+        Arity = 1;
     }
 
     public static PrintFn GetPrintFn()
@@ -16,15 +14,15 @@ public class PrintFn : Native
         return PPrintFn;
     }
     
-    public override void Execute(Stack<Value> stack)
+    public override void Execute(VM vm)
     {
         // Get the top value from the stack
-        Value top = stack.Pop();
+        Value top = vm.Pop();
         
         // Print the value to the console
         Console.WriteLine(top.GetValue());
         
         // Push the "value" of the function the stack
-        stack.Push(new Value(this.ToString(), ValueType.String));
+        vm.Push(new Value(ToString(), ValueType.String));
     }
 }

@@ -147,29 +147,6 @@ public class Compiler
             ExpressionStatement();
         }
     }
-
-    private void Assign()
-    {
-        Token identifier = _previous;
-        int indexAsConstant = -1;
-        try
-        {
-            indexAsConstant = CurrentFunction().Chunk.GetConstantIndex(identifier);
-        }
-        catch (CompileTimeException e)
-        {
-            // Add the identifier to the current chunk's constants
-            indexAsConstant =
-                CurrentFunction().Chunk.AddConstant(new Value(identifier.GetValue(), ValueType.Identifier));
-        }
-        
-        Consume(TokenType.Equal, "Expect '=' after identifier.");
-        
-        // Assign statement
-        Expression();
-        EmitByte(Instruction.StoreVar);
-        EmitByte((byte)indexAsConstant);
-    }
     
     private void FunctionCall()
     {
@@ -509,8 +486,12 @@ public class Compiler
         }
         else if (Match(TokenType.Identifier))
         {
-            // ! get local / global variable
             HandleIdentifier();
+        }
+        else if (Match(TokenType.SqLeftBrace))
+        {
+            // ! 
+            HandleList();
         }
         else
         {
@@ -603,6 +584,59 @@ public class Compiler
         }
     }
 
+    private void HandleList()
+    {
+        // Check if the list is defined as one of two things
+        // [1..20:3] - range
+        // [1,2,3,3] - definition
+        
+        // TODO: initialize as empty array
+        if (Match(TokenType.SqRightBrace))
+        {
+            EmitByte(Instruction.CreateListFromValues);
+            EmitByte((byte)0);
+            return;
+        }
+        
+        Expression();
+        
+        if (Match(TokenType.DoubleDot))
+        {
+            // ! Range
+            Expression();
+
+            if (Check(TokenType.Colon))
+            {
+                Expression();
+                EmitByte(Instruction.CreateListFromRange);
+            }
+            else
+            {
+                // Maybe have a way to create automatically calcualte increment
+                // e.g. [1..3] -> [1..3:1]
+                //      [1..-10] -> [1..-10:-1]
+            }
+        } 
+        else
+        {
+            // ! Definition
+            int itemCount = 1;
+
+            while(Match(TokenType.Comma))
+            {
+                Expression();
+                itemCount++;
+            }
+            
+            Consume(TokenType.SqRightBrace, "Expect ']' after array items.");
+            EmitByte(Instruction.CreateListFromValues);
+            EmitByte((byte)itemCount);
+            return;
+        }
+        
+        Consume(TokenType.SqRightBrace, "Expect ']' after array definition.");
+    }
+    
     private void HandleOperator(Token token, bool grouping, int indexOfLoadVar)
     {
         // TODO: change the signature of this function to be betterer

@@ -5,7 +5,7 @@ public abstract class Native(string identifier) : Function(identifier)
     /// <summary>
     /// Execute the native function
     /// </summary>
-    public abstract void Execute(Stack<Value> stack);
+    public abstract void Execute(VM vm);
 
     public override string ToString()
     {
@@ -14,7 +14,7 @@ public abstract class Native(string identifier) : Function(identifier)
 
     public override void PrintCode()
     {
-        Console.WriteLine(this.ToString());
+        Console.WriteLine(ToString());
         Console.WriteLine();
     }
 }

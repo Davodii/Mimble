@@ -4,13 +4,18 @@ namespace VMProject;
 
 public class CallFrame(UserDefined function, Environment environment)
 {
-    private Environment _environment  = environment;
     public UserDefined Function { get; } = function;
-    private int _ip = 0;
+    private int _ip;
 
     public byte ReadByte()
     {
         return Function.Chunk.GetByte(_ip++);
+    }
+
+    // ReSharper disable once InconsistentNaming
+    public int GetIP()
+    {
+        return _ip;
     }
 
     public void AddOffset(int offset)
@@ -20,12 +25,12 @@ public class CallFrame(UserDefined function, Environment environment)
 
     public Environment GetEnvironment()
     {
-        return _environment;
+        return environment;
     }
 
-    public void SetEnvironment(Environment environment)
+    public void SetEnvironment(Environment environment1)
     {
-        _environment = environment;
+        environment = environment1;
     }
 
     public override string ToString()
