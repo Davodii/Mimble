@@ -49,6 +49,19 @@ public class ListValue
     {
         _list.Add(val);
     }
+
+    public void RemoveAt(int index)
+    {
+        if (index == -1)
+        {
+            // Pop
+            _list.RemoveAt(_list.Count - 1);
+        }
+        else
+        {
+            _list.RemoveAt(index);
+        }
+    }
     
     public override string ToString()
     {

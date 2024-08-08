@@ -30,6 +30,10 @@ public static class GlobalScope
         // ! Append
         Native append = AppendFn.GetAppendFn();
         Global.Assign("append", new Value(append, ValueType.NativeFunction));
+        
+        // ! Pop
+        Native pop = PopFn.GetPopFn();
+        Global.Assign("pop", new Value(pop, ValueType.NativeFunction));
     }
 
     public static Environment GetGlobalScope()

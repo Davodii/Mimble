@@ -1,8 +1,8 @@
 namespace VMProject;
 
-public class CompileTimeException : Exception
+public sealed class CompileTimeException : Exception
 {
-    public Token Token;
+    public readonly Token Token;
     
     public CompileTimeException(Token token)
     {

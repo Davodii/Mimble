@@ -1,4 +1,5 @@
 using System.Globalization;
+using VMProject.Exceptions;
 using VMProject.Functions;
 
 namespace VMProject;
@@ -59,52 +60,7 @@ public class VM
     }
     
     #region Utility Functions
-
-    private int AsWholeInteger(Value val)
-    {
-        if (AsNumber(val) % 1 != 0)
-        {
-            // Not a whole number
-            throw new RunTimeException(CurrentLineNumber(), $"Expected a whole number but got {AsNumber(val)}");
-        }
-        return (int)AsNumber(val);
-    }
     
-    private bool IsNumber(Value val)
-    {
-        return val.GetValueType() == ValueType.Number;
-    }
-    
-    private bool AreNumbers(Value val1, Value val2)
-    {
-        return IsNumber(val1) && IsNumber(val2);
-    }
-
-    private bool AreBoolean(Value val1, Value val2)
-    {
-        return val1.GetValueType() == ValueType.Boolean && val2.GetValueType() == ValueType.Boolean;
-    }
-    
-    private double AsNumber(Value val)
-    {
-        if (val.GetValueType() != ValueType.Number)
-        {
-            throw new RunTimeException(CurrentLineNumber(), $"Expected a number, but got '{val.GetValueType().ToString()}'.");
-        }
-
-        return (double)val.GetValue();
-    }
-
-    private string AsString(Value val)
-    {
-        if (val.GetValueType() != ValueType.String)
-        {
-            throw new RunTimeException(CurrentLineNumber(), $"Expected a string, but got '{val.GetValueType().ToString()}'.");
-        }
-
-        return (string)val.GetValue();
-    }
-
     private string ToString(Value val)
     {
         // Convert the value to a string 
@@ -116,9 +72,9 @@ public class VM
                 if ((bool)val.GetValue()) return "true";
                 return "false";
             case ValueType.Number:
-                return AsNumber(val).ToString(CultureInfo.InvariantCulture);
+                return val.AsNumber().ToString(CultureInfo.InvariantCulture);
             case ValueType.String:
-                return AsString(val);
+                return val.AsString();
         }
         
         // Should never reach here
@@ -127,7 +83,7 @@ public class VM
 
     private bool IsFalse(Value val)
     {
-        return val.GetValueType() == ValueType.Boolean && (bool)val.GetValue() == false;
+        return val.AsBoolean() == false;
     }
 
     private void PrintStackTrace()
@@ -157,84 +113,68 @@ public class VM
     #endregion
     
     #region Binary Operations
-    
-    private void Add()
+
+    private void NumberBinaryOp(Instruction op)
     {
         Value val1 = Pop();
         Value val2 = Pop();
 
-        if (val1.GetValueType() == ValueType.String || val2.GetValueType() == ValueType.String)
+        if (op == Instruction.Add && (Value.IsString(val1) || Value.IsString(val2)))
         {
             // Perform string concatenation
-            string result = ToString(val2) + ToString(val1);
+            string sResult = ToString(val2) + ToString(val1);
             
             // push the result back onto the stack
-            Push(new Value(result, ValueType.String));
+            Push(new Value(sResult, ValueType.String));
+            return;
         }
-        else if (AreNumbers(val1, val2))
+
+        double val1Double, val2Double;
+        
+        try
         {
-            // Both values are numbers
-            double result = AsNumber(val1) + AsNumber(val2);
-            Push(new Value(result, ValueType.Number));
+            val1Double = val1.AsNumber();
+            val2Double = val2.AsNumber();
         }
-        else
+        catch (ConversionException e)
         {
-            // ! Invalid state
-            throw new RunTimeException(CurrentLineNumber(), $"The values '{val2.GetValue()}' and '{val1.GetValue()}' cannot be added.");
+            throw new RunTimeException(CurrentLineNumber(), $"Expected '{e.Expected}' value but got '{e.VValue.GetValueType()}'.");
         }
+        
+        // ! add, sub, mul, div
+        switch (op)
+        {
+            case Instruction.Less:
+                Push(new Value(val2Double < val1Double, ValueType.Boolean));
+                break;
+            case Instruction.Greater:
+                Push(new Value(val2Double > val1Double, ValueType.Boolean));
+                break;
+            case Instruction.Add:
+                Push(new Value(val2Double + val1Double, ValueType.Number));
+                break;
+            case Instruction.Subtract:
+                Push(new Value(val2Double - val1Double, ValueType.Number));
+                break;
+            case Instruction.Multiply:
+                Push(new Value(val2Double * val1Double, ValueType.Number));
+                break;
+            case Instruction.Divide:
+                Push(new Value(val2Double / val1Double, ValueType.Number));
+                break;
+        }
+        
+        
+        // Should be unreachable
+        throw new RunTimeException(CurrentLineNumber(), "Not a binary operator.");
     }
     
-    private void Subtract()
-    {
-        Value val1 = Pop();
-        Value val2 = Pop();
-
-        if (!AreNumbers(val1, val2))
-        {
-            throw new RunTimeException(CurrentLineNumber(), "Expected two numbers.");
-        }
-
-        // val1 is on top of val2 so the actual order is
-        // val2 - val1
-        double result = AsNumber(val2) - AsNumber(val1);
-        
-        Push(new Value(result, ValueType.Number));
-    }
-
-    private void Multiply()
-    {
-        Value val1 = Pop();
-        Value val2 = Pop();
-        
-        if (!AreNumbers(val1, val2))
-        {
-            throw new RunTimeException(CurrentLineNumber(), "Expected two numbers.");
-        }
-
-        double result = AsNumber(val1) * AsNumber(val2);
-        Push(new Value(result, ValueType.Number));
-    }
-
-    private void Divide()
-    {
-        Value val1 = Pop();
-        Value val2 = Pop();
-
-        if (!AreNumbers(val1, val2))
-        {
-            throw new RunTimeException(CurrentLineNumber(), "Expected two numbers.");
-        }
-
-        double result = AsNumber(val2) / AsNumber(val1);
-        Push(new Value(result, ValueType.Number));
-    }
-
     private void Or()
     {
         Value val1 = Pop();
         Value val2 = Pop();
                     
-        if (!AreBoolean(val1, val2))
+        if (!Value.IsBoolean(val1) || !Value.IsBoolean(val2))
         {
             throw new RunTimeException(CurrentLineNumber(), "Expected two booleans.");
         }
@@ -254,7 +194,7 @@ public class VM
         Value val1 = Pop();
         Value val2 = Pop();
 
-        if (!AreBoolean(val1, val2))
+        if (!Value.IsBoolean(val1) || !Value.IsBoolean(val2))
         {
             throw new RunTimeException(CurrentLineNumber(), "Expected two booleans.");
         }
@@ -269,35 +209,7 @@ public class VM
             Push(new Value(true, ValueType.Boolean));
         }
     }
-
-    private void Less()
-    {
-        Value val1 = Pop();
-        Value val2 = Pop();
-
-        if (!AreNumbers(val1, val2))
-        {
-            throw new RunTimeException(CurrentLineNumber(), "Expected two numbers.");
-        }
-
-        bool greater = (double)val2.GetValue() < (double)val1.GetValue();
-        Push(new Value(greater, ValueType.Boolean)); 
-    }
-
-    private void Greater()
-    {
-        Value val1 = Pop();
-        Value val2 = Pop();
-
-        if (!AreNumbers(val1, val2))
-        {
-            throw new RunTimeException(CurrentLineNumber(), "Expected two numbers.");
-        }
-
-        bool greater = (double)val2.GetValue() > (double)val1.GetValue();
-        Push(new Value(greater, ValueType.Boolean));
-    }
-
+    
     private void Equal()
     {
         Value val1 = Pop();
@@ -318,7 +230,7 @@ public class VM
             throw new RunTimeException(CurrentLineNumber(), $"Expected a number but got '{val.GetValueType()}'.");
         }
 
-        double result = -AsNumber(val);
+        double result = -val.AsNumber();
         Push(new Value(result, ValueType.Number));
     }
 
@@ -402,7 +314,6 @@ public class VM
 
             // PrintStackTrace();
             // PrintCallStack();
-            
             switch (instruction)
             {
                 case Instruction.Pop:
@@ -421,38 +332,28 @@ public class VM
                     Value constant = CurrentFunction().Chunk.GetConstant(ReadByte());
                     Push(constant);
                     break;
-                case Instruction.Add: // +
-                    Add();
-                    break;
-                case Instruction.Subtract: // -
-                    Subtract();
-                    break;
-                case Instruction.Multiply: // *
-                    Multiply();
-                    break;
-                case Instruction.Divide: // /
-                    Divide();
-                    break;
                 case Instruction.Negate: // -
                     Negate();
                     break;
+                case Instruction.Not: // not
+                    Not();
+                    break;
+                case Instruction.Add:
+                case Instruction.Subtract:
+                case Instruction.Multiply:
+                case Instruction.Divide:
+                case Instruction.Greater:
+                case Instruction.Less:
+                    NumberBinaryOp(instruction);
+                    break;
                 case Instruction.Equal: // ==
                     Equal();
-                    break;
-                case Instruction.Greater: // >
-                    Greater();
-                    break;
-                case Instruction.Less: // <
-                    Less();
                     break;
                 case Instruction.And:
                     And();
                     break;
                 case Instruction.Or:
                     Or();
-                    break;
-                case Instruction.Not: // not
-                    Not();
                     break;
                 case Instruction.Jump:
                 {
@@ -574,7 +475,7 @@ public class VM
                     Value end = Pop();
                     Value start = Pop();
 
-                    if (!IsNumber(increment) || !IsNumber(end) || !IsNumber(start))
+                    if (!Value.IsNumber(increment) || !Value.IsNumber(end) || !Value.IsNumber(start))
                     {
                         // TODO: make this return something actually useful
                         throw new RunTimeException(CurrentLineNumber(), "Expected numbers...");
@@ -585,8 +486,8 @@ public class VM
                     // if end < start, increment > 1
                     // TODO: check that the increment will actually has the correct sign
 
-                    ListValue list = new ListValue(AsWholeInteger(start), AsWholeInteger(end),
-                        AsWholeInteger(increment));
+                    ListValue list = new ListValue(start.AsInteger(), end.AsInteger(),
+                        increment.AsInteger());
                     
                     Value value = new Value(list, ValueType.List);
                     Push(value);

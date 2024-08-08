@@ -1,8 +1,8 @@
 namespace VMProject;
 
-public class RunTimeException : Exception
+public sealed class RunTimeException : Exception
 {
-    public int Line;
+    public readonly int Line;
     
     public RunTimeException(int line)
     {
