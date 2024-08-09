@@ -1,6 +1,7 @@
 using System.Globalization;
 using VMProject.Exceptions;
 using VMProject.Functions;
+using VMProject.Values;
 
 namespace VMProject;
 
@@ -250,9 +251,9 @@ public class VM
         CurrentFrame().GetEnvironment().Assign(identifier, functionValue);
     }
     
-    private void CallFunction() 
+    private void CallFunction()
     {
-        // Function value already stored on the stack
+        // Get the corresponding FunctionValue
         FunctionValue functionValue = (FunctionValue)Pop();
         Function function = functionValue.GetValue();
                     
@@ -398,25 +399,21 @@ public class VM
                 case Instruction.StoreVar:
                 {
                     // Pop the top of the stack and store it into the variable given by the second 
-                    Value val = Pop();
+                    Value val = Pop(); // to store inside the variable
 
-                    // IP now points to the index of the variable name
-                    byte index = ReadByte();
-                    Value variable = CurrentFunction().Chunk.GetConstant(index);
-                    string identifier = (string)variable.GetValue();
-
+                    StringValue identifier = (StringValue)CurrentFunction().Chunk.GetConstant(ReadByte());
+                    
                     // Store the value inside the identifier in the list
-                    CurrentFrame().GetEnvironment().Assign(identifier, val);
+                    CurrentFrame().GetEnvironment().Assign(identifier.AsString(), val);
                     
                     Push(val);
                     break;
                 }
                 case Instruction.LoadVar:
                 {
-                    Value variable = CurrentFunction().Chunk.GetConstant(ReadByte());
-                    string identifier = (string)variable.GetValue();
+                    StringValue identifier = (StringValue)CurrentFunction().Chunk.GetConstant(ReadByte());
                     
-                    Value value = CurrentFrame().GetEnvironment().Get(identifier);
+                    Value value = CurrentFrame().GetEnvironment().Get(identifier.AsString());
                     
                     Push(value);
                     break;
@@ -477,6 +474,17 @@ public class VM
                     Push(list);
                     break;
                 }
+                case Instruction.GetSubscript:
+                {
+                    NumberValue index = (NumberValue)Pop();
+                    ListValue list = (ListValue)Pop();
+
+                    Value atIndex = list.Get(index.AsInteger());
+                    
+                    Push(atIndex);
+                    break;
+                }
+                case Instruction.StoreSubscript:
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -500,7 +508,7 @@ public class VM
          mainFunction.PrintCode();
         
         // Begin execution of the code
-        //Run();
+        Run();
         
     }
 }

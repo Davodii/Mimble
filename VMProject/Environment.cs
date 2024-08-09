@@ -3,18 +3,18 @@ namespace VMProject;
 public class Environment(Environment enclosing = null!)
 {
     private readonly Environment? _enclosing = enclosing;
-    private readonly Dictionary<string, IdentifierValue> _locals = new();
+    private readonly Dictionary<string, Value> _locals = new();
 
     private void Define(string name)
     {
-        _locals.Add(name, new IdentifierValue(name));
+        _locals.Add(name, NullValue.GetNullValue());
     }
 
     public void Assign(string name, Value value)
     {
         if (_locals.ContainsKey(name))
         {
-            _locals[name].Assign(value);
+            _locals[name] = value;
         } 
         else if (_enclosing != null && _enclosing.Defined(name))
         {
@@ -24,11 +24,11 @@ public class Environment(Environment enclosing = null!)
         else
         {
             // No such variable exists, create it
-            _locals.Add(name,new IdentifierValue(name, value));
+            _locals.Add(name,value);
         }
     }
 
-    public IdentifierValue Get(string name)
+    public Value Get(string name)
     {
         if (_locals.TryGetValue(name, out var local))
         {

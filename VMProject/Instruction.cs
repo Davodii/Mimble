@@ -35,7 +35,7 @@ public enum Instruction
     // VARIABLES
     StoreVar,           // StoreVar [ VarIndex ]
     LoadVar,            // LoadVar [ VarIndex ]
-    GetAtIndex,
+    GetSubscript,
     StoreSubscript,
     DefFunction,
     CreateListFromValues,       // CreateListFromValues [ Value count ]

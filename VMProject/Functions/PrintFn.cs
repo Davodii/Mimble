@@ -1,3 +1,5 @@
+using VMProject.Values;
+
 namespace VMProject.Functions;
 
 public class PrintFn : Native

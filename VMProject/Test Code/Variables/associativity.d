@@ -1,6 +1,6 @@
 a = "a"
 b = "b"
-c = "c"
+c = 10
 
 a = b = c
 print(a)

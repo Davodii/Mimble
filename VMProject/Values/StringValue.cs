@@ -1,4 +1,4 @@
-namespace VMProject;
+namespace VMProject.Values;
 
 public class StringValue : ConstantValue
 {
@@ -15,5 +15,11 @@ public class StringValue : ConstantValue
     public override string ToString()
     {
         return AsString();
+    }
+
+    public override bool Equals(object? obj)
+    {
+        if (obj.GetType() != GetType()) return false;
+        return ((StringValue)obj).AsString() == AsString();
     }
 }

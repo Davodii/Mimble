@@ -1,4 +1,5 @@
 using VMProject.Functions;
+using VMProject.Values;
 
 namespace VMProject;
 
@@ -161,7 +162,7 @@ public class Compiler
         }
         catch
         {
-            functionIndex = CurrentFunction().Chunk.AddConstant(new IdentifierValue(identifier.GetValue()));
+            functionIndex = CurrentFunction().Chunk.AddConstant(new StringValue(identifier.GetValue()));
         }
         
         Consume(TokenType.LeftParen, "Expect '(' after function identifier.");
@@ -398,6 +399,8 @@ public class Compiler
     #region Expressions
     private readonly Dictionary<TokenType, (bool, int)> _operatorInfo = new Dictionary<TokenType, (bool, int)>()
     {
+        { TokenType.SqLeftBrace, (false, 0)},
+        
         // Assignment
         { TokenType.Equal, (true, 0)},
         
@@ -430,10 +433,12 @@ public class Compiler
         
         // Compute the left hand side of the expression
         // Push the result(s) to the stack  
+
+        int indexOfLHS = CurrentFunction().Chunk.GetCodeCount();
         
         ComputeAtom();
         
-        bool array = _previous.GetType() == TokenType.SqRightBrace;
+        bool grouping = _previous.GetType() == TokenType.RightParen;
         
         // Continue until an operator of lower precedence than minPrec is found
         while (true)
@@ -455,7 +460,7 @@ public class Compiler
             Expression(nextMinPrecedence);
 
             // Emit the correct bytes to the chunk
-            HandleOperator(op, array);
+            HandleOperator(op, grouping, indexOfLHS);
         }
     }
 
@@ -563,25 +568,25 @@ public class Compiler
         catch
         {
             // Add the constant to the constants list
-            index = CurrentFunction().Chunk.AddConstant(new IdentifierValue(identifier.GetValue()));
+            index = CurrentFunction().Chunk.AddConstant(new StringValue(identifier.GetValue()));
         }
         
         if (Check(TokenType.LeftParen))
         {
             FunctionCall();
         }
-        else if (Match(TokenType.SqLeftBrace))
-        {
-            // Array indexing
-            
-            // Get the index 
-            Expression();
-            
-            EmitByte(Instruction.LoadVar);
-            EmitByte((byte)index);
-            EmitByte(Instruction.GetAtIndex);
-            Consume(TokenType.SqRightBrace, "Expect ']' after array index.");
-        }
+        // else if (Match(TokenType.SqLeftBrace))
+        // {
+        //     // Array indexing
+        //     
+        //     // Get the index 
+        //     Expression();
+        //     
+        //     EmitByte(Instruction.LoadVar);
+        //     EmitByte((byte)index);
+        //     EmitByte(Instruction.GetAtIndex);
+        //     Consume(TokenType.SqRightBrace, "Expect ']' after array index.");
+        // }
         else
         {
             // Get the identifier and push onto the stack
@@ -645,7 +650,7 @@ public class Compiler
         Consume(TokenType.SqRightBrace, "Expect ']' after array definition.");
     }
     
-    private void HandleOperator(Token token, bool array)
+    private void HandleOperator(Token token, bool grouping, int indexOfLHS)
     {
         // TODO: change the signature of this function to be betterer
         
@@ -690,9 +695,33 @@ public class Compiler
                 EmitByte(Instruction.Greater);
                 EmitByte(Instruction.Not);
                 break;
+            case TokenType.SqLeftBrace:
+                // Consume the indexing part
+                Consume(TokenType.SqRightBrace, "Expect ']' after array index.");
+                if (Match(TokenType.Equal))
+                {
+                    // Assignment 
+                    Expression();
+                    EmitByte(Instruction.StoreSubscript);
+                }
+                else
+                {
+                    EmitByte(Instruction.GetSubscript);
+                }
+                break;
             case TokenType.Equal:
-                // Array indexing
-                EmitByte(array ? Instruction.StoreSubscript : Instruction.StoreVar);
+                // if (!identifier) throw new CompileTimeException(token, "Can only assign values to an identifier, not an expression.");
+                if (CurrentFunction().Chunk.GetByte(indexOfLHS) != (byte)Instruction.LoadVar || grouping)
+                    throw new CompileTimeException(token,
+                        "Can only assign values to an identifier, not an expression.");
+                
+                // Pop load instruction and index
+                CurrentFunction().Chunk.RemoveInstruction(indexOfLHS);
+                byte identifierIndex = CurrentFunction().Chunk.RemoveInstruction(indexOfLHS);
+                
+                // Add the store var
+                EmitByte(Instruction.StoreVar);
+                EmitByte(identifierIndex);
                 break;
         }
     }
@@ -715,6 +744,7 @@ public class Compiler
             case TokenType.GreaterEqual:// >=
             case TokenType.EqualEqual:  // ==
             case TokenType.Equal:       // =
+            case TokenType.SqLeftBrace: // [
                 return true;
         }
         

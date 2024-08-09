@@ -58,8 +58,14 @@ public class Chunk
     
     public int AddConstant(Value value)
     {
-        _constants.Add(value);
-        return _constants.Count - 1;
+        int index = _constants.IndexOf(value);
+        if (index == -1)
+        {
+            _constants.Add(value);
+            return _constants.Count - 1;
+        }
+
+        return index;
     }
 
     public Value GetConstant(int index)
@@ -184,7 +190,7 @@ public class Chunk
                     Console.WriteLine("Or");
                     break;
                 case Instruction.StoreVar:
-                    Console.WriteLine($"Store Var");
+                    Console.WriteLine($"Store Var [{_constants[_code[++i]]}]");
                     break;
                 case Instruction.LoadVar:
                     Console.WriteLine($"Load Var [{_constants[_code[++i]]}]");
@@ -198,7 +204,7 @@ public class Chunk
                 case Instruction.EndScope:
                     Console.WriteLine("End Scope");
                     break;
-                case Instruction.GetAtIndex:
+                case Instruction.GetSubscript:
                     Console.WriteLine($"Get At Index ");
                     break;
                 case Instruction.CreateListFromValues:
