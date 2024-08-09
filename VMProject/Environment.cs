@@ -7,7 +7,7 @@ public class Environment(Environment enclosing = null!)
 
     private void Define(string name)
     {
-        _locals.Add(name, new Value(null!, ValueType.Null));
+        _locals.Add(name, NullValue.GetNullValue());
     }
 
     public void Assign(string name, Value value)
@@ -24,7 +24,7 @@ public class Environment(Environment enclosing = null!)
         else
         {
             // No such variable exists, create it
-            _locals.Add(name, value);
+            _locals.Add(name,value);
         }
     }
 
@@ -49,12 +49,7 @@ public class Environment(Environment enclosing = null!)
         {
             return true;
         }
-        if (_enclosing == null)
-        {
-            return false;
-        }
-
-        return _enclosing.Defined(identifier);
+        return _enclosing != null && _enclosing.Defined(identifier);
     }
 
     public Environment? GetEnclosing()

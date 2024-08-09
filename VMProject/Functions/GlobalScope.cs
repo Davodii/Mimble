@@ -21,19 +21,19 @@ public static class GlobalScope
     {
         // ! Print
         Native print = PrintFn.GetPrintFn();
-        Global.Assign("print", new Value(print, ValueType.NativeFunction));
+        Global.Assign("print", new FunctionValue(ValueType.NativeFunction, print));
         
         // ! Length
         Native length = LengthFn.GetLengthFn();
-        Global.Assign("length", new Value(length, ValueType.NativeFunction));
+        Global.Assign("length", new FunctionValue(ValueType.NativeFunction, length));
         
         // ! Append
         Native append = AppendFn.GetAppendFn();
-        Global.Assign("append", new Value(append, ValueType.NativeFunction));
+        Global.Assign("append", new FunctionValue(ValueType.NativeFunction, append));
         
         // ! Pop
         Native pop = PopFn.GetPopFn();
-        Global.Assign("pop", new Value(pop, ValueType.NativeFunction));
+        Global.Assign("pop", new FunctionValue(ValueType.NativeFunction, pop));
     }
 
     public static Environment GetGlobalScope()

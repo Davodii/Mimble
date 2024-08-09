@@ -22,6 +22,6 @@ public class LengthFn : Native
             throw new RunTimeException(vm.CurrentLineNumber(), $"Expected a list but got '{value.GetValueType()}'.");
 
         ListValue list = (ListValue)value.GetValue();
-        vm.Push(new Value((double)list.Count(), ValueType.Number));
+        vm.Push(new NumberValue(list.Count()));
     }
 }

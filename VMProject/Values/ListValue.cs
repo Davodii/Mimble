@@ -2,11 +2,11 @@ using System.Collections;
 
 namespace VMProject;
 
-public class ListValue
+public class ListValue : Value
 {
     private List<Value> _list = new List<Value>();
     
-    public ListValue(int start, int end)
+    public ListValue(int start, int end) : base(ValueType.List)
     {
         // Calculate increment from this
         int increment = (end - start) / Math.Abs(end - start);
@@ -14,12 +14,12 @@ public class ListValue
         AddFromRange(start, end, increment);
     }
 
-    public ListValue(int start, int end, int increment)
+    public ListValue(int start, int end, int increment) : base(ValueType.List)
     {
         AddFromRange(start, end, increment);
     }
 
-    public ListValue(Stack<Value> stack, int itemCount)
+    public ListValue(Stack<Value> stack, int itemCount) : base(ValueType.List)
     {
         for (int i = 0; i < itemCount; i++)
         {
@@ -31,7 +31,7 @@ public class ListValue
     {
         for (int i = start; (start < end) ? i < end : i > end; i += increment)
         {
-            _list.Add(new Value((double)i, ValueType.Number));
+            _list.Add(new NumberValue(i));
         }
     }
 
@@ -62,7 +62,17 @@ public class ListValue
             _list.RemoveAt(index);
         }
     }
-    
+
+    public void AssignAt(int index, Value value)
+    {
+        _list[index] = value;
+    }
+
+    public override object GetValue()
+    {
+        return _list;
+    }
+
     public override string ToString()
     {
         // Create a string of all the values in the list

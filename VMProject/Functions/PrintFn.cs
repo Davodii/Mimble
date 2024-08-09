@@ -1,3 +1,5 @@
+using VMProject.Values;
+
 namespace VMProject.Functions;
 
 public class PrintFn : Native
@@ -20,9 +22,9 @@ public class PrintFn : Native
         Value top = vm.Pop();
         
         // Print the value to the console
-        Console.WriteLine(top.GetValue());
+        Console.WriteLine(top.ToString());
         
         // Push the "value" of the function the stack
-        vm.Push(new Value(ToString(), ValueType.String));
+        vm.Push(new StringValue(ToString()));
     }
 }
