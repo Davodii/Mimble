@@ -34,6 +34,6 @@ public class IdentifierValue : ConstantValue
 
     public override string ToString()
     {
-        return $"\"{_identifier}\": {_value}";
+        return _value.ToString();
     }
 }

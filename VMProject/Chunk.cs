@@ -207,6 +207,9 @@ public class Chunk
                 case Instruction.GetSubscript:
                     Console.WriteLine($"Get At Index ");
                     break;
+                case Instruction.StoreSubscript:
+                    Console.WriteLine("Store Subscript");
+                    break;
                 case Instruction.CreateListFromValues:
                     Console.WriteLine($"Create List From Values [Value Count: {_code[++i]}]");
                     break;

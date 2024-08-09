@@ -485,6 +485,15 @@ public class VM
                     break;
                 }
                 case Instruction.StoreSubscript:
+                {
+                    Value toStore = Pop();
+                    NumberValue index = (NumberValue)Pop();
+                    ListValue list = (ListValue)Pop();
+                    
+                    list.AssignAt(index.AsInteger(), toStore);
+                    Push(toStore);
+                    break;
+                }
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -505,7 +514,7 @@ public class VM
         _frames.Push(new CallFrame(mainFunction, mainEnvironment));
         
         // ! Testing purposes only
-         mainFunction.PrintCode();
+        // mainFunction.PrintCode();
         
         // Begin execution of the code
         Run();

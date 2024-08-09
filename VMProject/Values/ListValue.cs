@@ -63,6 +63,11 @@ public class ListValue : Value
         }
     }
 
+    public void AssignAt(int index, Value value)
+    {
+        _list[index] = value;
+    }
+
     public override object GetValue()
     {
         return _list;

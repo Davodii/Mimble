@@ -8,4 +8,9 @@ public class FunctionValue(ValueType type, Function function) : Value(type)
     {
         return function;
     }
+
+    public override string ToString()
+    {
+        return function.ToString();
+    }
 }

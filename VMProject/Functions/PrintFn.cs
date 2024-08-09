@@ -22,7 +22,7 @@ public class PrintFn : Native
         Value top = vm.Pop();
         
         // Print the value to the console
-        Console.WriteLine(top.GetValue());
+        Console.WriteLine(top.ToString());
         
         // Push the "value" of the function the stack
         vm.Push(new StringValue(ToString()));
