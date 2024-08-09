@@ -60,30 +60,14 @@ public class VM
     }
     
     #region Utility Functions
-    
-    private string ToString(Value val)
-    {
-        // Convert the value to a string 
-        switch (val.GetValueType())
-        {
-            case ValueType.Null:
-                return "null";
-            case ValueType.Boolean:
-                if ((bool)val.GetValue()) return "true";
-                return "false";
-            case ValueType.Number:
-                return val.AsNumber().ToString(CultureInfo.InvariantCulture);
-            case ValueType.String:
-                return val.AsString();
-        }
-        
-        // Should never reach here
-        throw new RunTimeException(CurrentLineNumber(), $"Expected a value but got '{val.GetValueType().ToString()}'.");
-    }
 
-    private bool IsFalse(Value val)
+    private bool IsFalse(ConstantValue val)
     {
-        return val.AsBoolean() == false;
+        if (!ConstantValue.IsBoolean(val))
+        {
+            throw new RunTimeException(CurrentLineNumber(), "Expected value to be a boolean.");
+        }
+        return ((BooleanValue)val).AsBoolean() == false;
     }
 
     private void PrintStackTrace()
@@ -119,13 +103,13 @@ public class VM
         Value val1 = Pop();
         Value val2 = Pop();
 
-        if (op == Instruction.Add && (Value.IsString(val1) || Value.IsString(val2)))
+        if (op == Instruction.Add && (ConstantValue.IsString(val1) || ConstantValue.IsString(val2)))
         {
             // Perform string concatenation
-            string sResult = ToString(val2) + ToString(val1);
+            string sResult = val2.ToString() + val1;
             
             // push the result back onto the stack
-            Push(new Value(sResult, ValueType.String));
+            Push(new StringValue(sResult));
             return;
         }
 
@@ -133,8 +117,8 @@ public class VM
         
         try
         {
-            val1Double = val1.AsNumber();
-            val2Double = val2.AsNumber();
+            val1Double = ((NumberValue)val1).AsNumber();
+            val2Double = ((NumberValue)val2).AsNumber();
         }
         catch (ConversionException e)
         {
@@ -145,22 +129,22 @@ public class VM
         switch (op)
         {
             case Instruction.Less:
-                Push(new Value(val2Double < val1Double, ValueType.Boolean));
+                Push(new BooleanValue(val2Double < val1Double));
                 break;
             case Instruction.Greater:
-                Push(new Value(val2Double > val1Double, ValueType.Boolean));
+                Push(new BooleanValue(val2Double > val1Double));
                 break;
             case Instruction.Add:
-                Push(new Value(val2Double + val1Double, ValueType.Number));
+                Push(new NumberValue(val2Double + val1Double));
                 break;
             case Instruction.Subtract:
-                Push(new Value(val2Double - val1Double, ValueType.Number));
+                Push(new NumberValue(val2Double - val1Double));
                 break;
             case Instruction.Multiply:
-                Push(new Value(val2Double * val1Double, ValueType.Number));
+                Push(new NumberValue(val2Double * val1Double));
                 break;
             case Instruction.Divide:
-                Push(new Value(val2Double / val1Double, ValueType.Number));
+                Push(new NumberValue(val2Double / val1Double));
                 break;
         }
         
@@ -174,18 +158,18 @@ public class VM
         Value val1 = Pop();
         Value val2 = Pop();
                     
-        if (!Value.IsBoolean(val1) || !Value.IsBoolean(val2))
+        if (!ConstantValue.IsBoolean(val1) || !ConstantValue.IsBoolean(val2))
         {
             throw new RunTimeException(CurrentLineNumber(), "Expected two booleans.");
         }
 
-        if (IsFalse(val1) && IsFalse(val2))
+        if (IsFalse((ConstantValue)val1) && IsFalse((ConstantValue)val2))
         {
-            Push(new Value(false, ValueType.Boolean));
+            Push(new BooleanValue(false));
         }
         else
         {
-            Push(new Value(true, ValueType.Boolean));
+            Push(new BooleanValue(true));
         }
     }
 
@@ -194,19 +178,19 @@ public class VM
         Value val1 = Pop();
         Value val2 = Pop();
 
-        if (!Value.IsBoolean(val1) || !Value.IsBoolean(val2))
+        if (!ConstantValue.IsBoolean(val1) || !ConstantValue.IsBoolean(val2))
         {
             throw new RunTimeException(CurrentLineNumber(), "Expected two booleans.");
         }
 
-        if (IsFalse(val2) || IsFalse(val1))
+        if (IsFalse((ConstantValue)val2) || IsFalse((ConstantValue)val1))
         {
-            // Skip over val1
-            Push(new Value(false, ValueType.Boolean));
+            // TODO: Skip over val1
+            Push(new BooleanValue(false));
         }
         else
         {
-            Push(new Value(true, ValueType.Boolean));
+            Push(new BooleanValue(true));
         }
     }
     
@@ -215,7 +199,8 @@ public class VM
         Value val1 = Pop();
         Value val2 = Pop();
                     
-        Push(new Value(val1.Equals(val2), ValueType.Boolean));
+        // TODO: update equals to be per value type
+        Push(new BooleanValue(val1.Equals(val2)));
     }
     
     #endregion
@@ -225,26 +210,26 @@ public class VM
     private void Negate()
     {
         Value val = Pop();
-        if (val.GetValueType() != ValueType.Number)
+        if (!ConstantValue.IsNumber(val))
         {
             throw new RunTimeException(CurrentLineNumber(), $"Expected a number but got '{val.GetValueType()}'.");
         }
 
-        double result = -val.AsNumber();
-        Push(new Value(result, ValueType.Number));
+        double result = -((NumberValue)val).AsNumber();
+        Push(new NumberValue(result));
     }
 
     private void Not()
     {
         Value val = Pop();
 
-        if (val.GetValueType() != ValueType.Boolean)
+        if (!ConstantValue.IsBoolean(val))
         {
             throw new RunTimeException(CurrentLineNumber(), $"Expected a boolean but got '{val.GetValueType()}'");
         }
 
-        bool not = !(bool)val.GetValue();
-        Push(new Value(not, ValueType.Boolean));
+        bool not = !((BooleanValue)val).AsBoolean();
+        Push(new BooleanValue(not));
 
     }
     #endregion
@@ -253,8 +238,8 @@ public class VM
     
     private void DefineFunction()
     {
-        Value functionValue = CurrentFunction().Chunk.GetConstant(ReadByte());
-        string identifier = ((Function)functionValue.GetValue()).Identifier;
+        FunctionValue functionValue = (FunctionValue)CurrentFunction().Chunk.GetConstant(ReadByte());
+        string identifier = functionValue.GetValue().Identifier;
 
         // Check to see if the function is already defined
         if (CurrentFrame().GetEnvironment().Defined(identifier))
@@ -268,8 +253,8 @@ public class VM
     private void CallFunction() 
     {
         // Function value already stored on the stack
-        Value functionValue = Pop();
-        Function function = (Function)functionValue.GetValue();
+        FunctionValue functionValue = (FunctionValue)Pop();
+        Function function = functionValue.GetValue();
                     
         // Get the arity
         int argumentCount = ReadByte();
@@ -320,13 +305,13 @@ public class VM
                     Pop();
                     break;
                 case Instruction.Null:
-                    Push(new Value(null!, ValueType.Null));
+                    Push(NullValue.GetNullValue());
                     break;
                 case Instruction.False:
-                    Push(new Value(false, ValueType.Boolean));
+                    Push(new BooleanValue(false));
                     break;
                 case Instruction.True:
-                    Push(new Value(true, ValueType.Boolean));
+                    Push(new BooleanValue(true));
                     break;
                 case Instruction.LoadConstant:
                     Value constant = CurrentFunction().Chunk.GetConstant(ReadByte());
@@ -367,7 +352,8 @@ public class VM
                 case Instruction.JumpIfFalse:
                 {
                     // Check if the top value is false
-                    if (IsFalse(Peek()))
+                    // TODO: update IsFalse or Peek() to check for variables
+                    if (IsFalse((ConstantValue)Peek()))
                     {
                         // Jump
                         short offset = ReadShort();
@@ -464,9 +450,8 @@ public class VM
                     byte count = ReadByte();
 
                     ListValue list = new ListValue(_valueStack, count);
-
-                    Value value = new Value(list, ValueType.List);
-                    Push(value);
+                    
+                    Push(list);
                     break;
                 }
                 case Instruction.CreateListFromRange:
@@ -475,7 +460,7 @@ public class VM
                     Value end = Pop();
                     Value start = Pop();
 
-                    if (!Value.IsNumber(increment) || !Value.IsNumber(end) || !Value.IsNumber(start))
+                    if (!ConstantValue.IsNumber(increment) || !ConstantValue.IsNumber(end) || !ConstantValue.IsNumber(start))
                     {
                         // TODO: make this return something actually useful
                         throw new RunTimeException(CurrentLineNumber(), "Expected numbers...");
@@ -486,11 +471,10 @@ public class VM
                     // if end < start, increment > 1
                     // TODO: check that the increment will actually has the correct sign
 
-                    ListValue list = new ListValue(start.AsInteger(), end.AsInteger(),
-                        increment.AsInteger());
+                    ListValue list = new ListValue(((NumberValue)start).AsInteger(), ((NumberValue)end).AsInteger(),
+                        ((NumberValue)increment).AsInteger());
                     
-                    Value value = new Value(list, ValueType.List);
-                    Push(value);
+                    Push(list);
                     break;
                 }
                 default:
@@ -513,10 +497,10 @@ public class VM
         _frames.Push(new CallFrame(mainFunction, mainEnvironment));
         
         // ! Testing purposes only
-        // mainFunction.PrintCode();
+         mainFunction.PrintCode();
         
         // Begin execution of the code
-        Run();
+        //Run();
         
     }
 }

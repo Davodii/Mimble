@@ -161,8 +161,7 @@ public class Compiler
         }
         catch
         {
-            functionIndex = CurrentFunction().Chunk.AddConstant(new Value(identifier.GetValue(), ValueType.Identifier));
-
+            functionIndex = CurrentFunction().Chunk.AddConstant(new IdentifierValue(identifier.GetValue()));
         }
         
         Consume(TokenType.LeftParen, "Expect '(' after function identifier.");
@@ -242,7 +241,7 @@ public class Compiler
                 // ! Define variable to the function's constants
                 Token identifier = _current;
                 // Add the identifier to the function's constants
-                int index = newFunction.Chunk.AddConstant(new Value(identifier.GetValue(), ValueType.Identifier));
+                int index = newFunction.Chunk.AddConstant(new IdentifierValue(identifier.GetValue()));
                 EmitByte(Instruction.StoreVar);
                 EmitByte((byte)index);
                
@@ -260,7 +259,10 @@ public class Compiler
         EmitByte(Instruction.Return);
         
         // add the function to the current chunk's constants
-        Value functionValue = new Value(newFunction, ValueType.UserDefinedFunction);
+        //         // new Func(ValueType.UserDefinedFunction, newFunction,);new Func(ValueType.UserDefinedFunction, newFunction,);
+        // new Func(ValueType.UserDefinedFunction, newFunction,);new Func(ValueType.UserDefinedFunction, newFunction,);
+
+        Value functionValue = new FunctionValue(ValueType.UserDefinedFunction, newFunction);
         _functions.Pop();
         int functionIndex = CurrentFunction().Chunk.AddConstant(functionValue);
         EmitByte(Instruction.DefFunction);
@@ -428,7 +430,10 @@ public class Compiler
         
         // Compute the left hand side of the expression
         // Push the result(s) to the stack  
-        bool grouping = ComputeAtom();
+        
+        ComputeAtom();
+        
+        bool array = _previous.GetType() == TokenType.SqRightBrace;
         
         // Continue until an operator of lower precedence than minPrec is found
         while (true)
@@ -444,27 +449,24 @@ public class Compiler
             int precedence = opInfoTuple.Item2;
             bool rightAssociative = opInfoTuple.Item1;
             int nextMinPrecedence = rightAssociative ? precedence : precedence + 1;
-
-            int countBeforeRightExpr = CurrentFunction().Chunk.GetCodeCount();
             
             // Consume the current token and prepare the next one for the recursive call
             Advance();
             Expression(nextMinPrecedence);
 
             // Emit the correct bytes to the chunk
-            HandleOperator(op, grouping, countBeforeRightExpr - 2);
+            HandleOperator(op, array);
         }
     }
 
-    private bool ComputeAtom()
+    private void ComputeAtom()
     {
         if (Match(TokenType.LeftParen))
         {
             Expression();
             Consume(TokenType.RightParen, "All groupings must be closed off.");
-            return true;
         }
-        if (Match(TokenType.Minus))
+        else if (Match(TokenType.Minus))
         {
             // ! Unary Minus
             HandleUnary(Instruction.Negate);
@@ -497,8 +499,6 @@ public class Compiler
         {
             throw new CompileTimeException(_current, $"Unexpected token '{_current}'");
         }
-
-        return false;
     }
 
     private void HandleUnary(Instruction instruction)
@@ -524,11 +524,11 @@ public class Compiler
         if (constant.GetType() == TokenType.Number)
         {
             double asDouble = double.Parse(constant.GetValue());
-            val = new Value(asDouble, ValueType.Number);
+            val = new NumberValue(asDouble);
         }
         else if (constant.GetType() == TokenType.String)
         {
-            val = new Value(constant.GetValue(), ValueType.String);
+            val = new StringValue(constant.GetValue());
         }
         else
         {
@@ -554,7 +554,7 @@ public class Compiler
         // TODO: compare between arrays, variables and functions
         
         // Get the index of the identifier inside the current chunk's constants
-        int index = -1;
+        int index;
 
         try
         {
@@ -563,16 +563,24 @@ public class Compiler
         catch
         {
             // Add the constant to the constants list
-            index = CurrentFunction().Chunk.AddConstant(new Value(identifier.GetValue(), ValueType.Identifier));
+            index = CurrentFunction().Chunk.AddConstant(new IdentifierValue(identifier.GetValue()));
         }
         
         if (Check(TokenType.LeftParen))
         {
             FunctionCall();
         }
-        else if (Check(TokenType.SqLeftBrace))
+        else if (Match(TokenType.SqLeftBrace))
         {
-            // array indexing 
+            // Array indexing
+            
+            // Get the index 
+            Expression();
+            
+            EmitByte(Instruction.LoadVar);
+            EmitByte((byte)index);
+            EmitByte(Instruction.GetAtIndex);
+            Consume(TokenType.SqRightBrace, "Expect ']' after array index.");
         }
         else
         {
@@ -637,7 +645,7 @@ public class Compiler
         Consume(TokenType.SqRightBrace, "Expect ']' after array definition.");
     }
     
-    private void HandleOperator(Token token, bool grouping, int indexOfLoadVar)
+    private void HandleOperator(Token token, bool array)
     {
         // TODO: change the signature of this function to be betterer
         
@@ -683,20 +691,8 @@ public class Compiler
                 EmitByte(Instruction.Not);
                 break;
             case TokenType.Equal:
-                // Remote the "LOAD VAR index" code from the chunk
-                // and instead put "STORE VAR" 
-
-                // if (!identifier) throw new CompileTimeException(token, "Can only assign values to an identifier, not an expression.");
-                if (CurrentFunction().Chunk.GetByte(indexOfLoadVar) != (byte)Instruction.LoadVar || grouping)
-                    throw new CompileTimeException(token,
-                        "Can only assign values to an identifier, not an expression.");
-                
-                CurrentFunction().Chunk.RemoveInstruction(indexOfLoadVar);
-                byte identifierIndex = CurrentFunction().Chunk.RemoveInstruction(indexOfLoadVar);
-                
-                // Add the store var
-                EmitByte(Instruction.StoreVar);
-                EmitByte(identifierIndex);
+                // Array indexing
+                EmitByte(array ? Instruction.StoreSubscript : Instruction.StoreVar);
                 break;
         }
     }

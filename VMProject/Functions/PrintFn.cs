@@ -23,6 +23,6 @@ public class PrintFn : Native
         Console.WriteLine(top.GetValue());
         
         // Push the "value" of the function the stack
-        vm.Push(new Value(ToString(), ValueType.String));
+        vm.Push(new StringValue(ToString()));
     }
 }

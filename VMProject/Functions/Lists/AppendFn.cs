@@ -26,6 +26,6 @@ public class AppendFn : Native
         
         list.Append(toAdd);
         
-        vm.Push(new Value((double)list.Count(), ValueType.Number));
+        vm.Push(new NumberValue(list.Count()));
     }
 }

@@ -18,20 +18,25 @@ public class PopFn : Native
 
     public override void Execute(VM vm)
     {
-        Value indexValue = vm.Pop();
-        Value listValue = vm.Pop();
+        ConstantValue indexValue;
+        ListValue listValue;
+        try
+        {
+            indexValue = (ConstantValue)vm.Pop();
+            listValue = (ListValue)vm.Pop();
+        }
+        catch (Exception e)
+        {
+            // print the error
+            throw;
+        }
 
-        if (listValue.GetValueType() != ValueType.List)
-            throw new RunTimeException(vm.CurrentLineNumber(), $"Expected a list but got '{listValue.GetValueType()}'.");
-
-        ListValue list = (ListValue)listValue.GetValue();
-
-        if (indexValue.GetValueType() != ValueType.Number)
+        if (ConstantValue.IsNumber(indexValue))
             throw new RunTimeException(vm.CurrentLineNumber(), $"Expected a number but got '{indexValue.GetValueType()}'.");
 
         try
         {
-            list.RemoveAt(indexValue.AsInteger());
+            listValue.RemoveAt(((NumberValue)indexValue).AsInteger());
         }
         catch (Exception e)
         {
@@ -41,12 +46,12 @@ public class PopFn : Native
                     throw new RunTimeException(vm.CurrentLineNumber(),
                         $"Expected a '{exception.Expected}' value, but got a '{exception.VValue.GetValueType()}' value.");
                 case ArgumentOutOfRangeException:
-                    throw new RunTimeException(vm.CurrentLineNumber(), $"Index ({indexValue.AsInteger()}) was outside the range of the list ({list.Count()}).");
+                    throw new RunTimeException(vm.CurrentLineNumber(), $"Index ({((NumberValue)indexValue).AsInteger()}) was outside the range of the list ({listValue.Count()}).");
                 default:
                     throw;
             }
         }
 
-        vm.Push(new Value(ToString(), ValueType.String));
+        vm.Push(new StringValue(ToString()));
     }
 }

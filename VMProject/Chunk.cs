@@ -74,7 +74,7 @@ public class Chunk
 
     private bool ContainsValue(Token token)
     {
-        return _constants.Any(value => value.GetValueType() ==  ValueType.Identifier && (string)value.GetValue() == token.GetValue());
+        return _constants.Any(value => value.GetValueType() ==  ValueType.Identifier && ((IdentifierValue)value).GetIdentifier() == token.GetValue());
     }
 
     public int GetConstantIndex(Token token)
@@ -83,7 +83,7 @@ public class Chunk
         
         // Get the index of the first Value to have the same value as the token and is an identifier
         return _constants.FindIndex(value =>
-            value.GetValueType() == ValueType.Identifier && (string)value.GetValue() == token.GetValue());
+            value.GetValueType() == ValueType.Identifier && ((IdentifierValue)value).GetIdentifier() == token.GetValue());
     }
 
     public int GetConstantCount()
@@ -124,16 +124,16 @@ public class Chunk
                     Console.WriteLine("Pop");
                     break;
                 case Instruction.Null:
-                    Console.WriteLine("[ Null ]");
+                    Console.WriteLine("[Null]");
                     break;
                 case Instruction.False:
-                    Console.WriteLine("[ false ]");
+                    Console.WriteLine("[false]");
                     break;
                 case Instruction.True:
-                    Console.WriteLine("[ true ]");
+                    Console.WriteLine("[true]");
                     break;
                 case Instruction.LoadConstant:
-                    Console.WriteLine("Load Constant {" + _constants[_code[++i]] + "}");
+                    Console.WriteLine($"Load Constant [{ _constants[_code[++i]]}]");
                     break;
                 case Instruction.Add:
                     Console.WriteLine("Add");
@@ -172,7 +172,7 @@ public class Chunk
                     Console.WriteLine($"Loop -{_code[++i].ToString("X2")}{_code[++i].ToString("X2")}");
                     break;
                 case Instruction.Call:
-                    Console.WriteLine($"Call {_code[++i]}");
+                    Console.WriteLine($"Call [Param Count: {_code[++i]}]");
                     break;
                 case Instruction.Return:
                     Console.WriteLine("Return");
@@ -184,7 +184,7 @@ public class Chunk
                     Console.WriteLine("Or");
                     break;
                 case Instruction.StoreVar:
-                    Console.WriteLine($"Store Var [{_constants[_code[++i]]}]");
+                    Console.WriteLine($"Store Var");
                     break;
                 case Instruction.LoadVar:
                     Console.WriteLine($"Load Var [{_constants[_code[++i]]}]");
@@ -197,6 +197,15 @@ public class Chunk
                     break;
                 case Instruction.EndScope:
                     Console.WriteLine("End Scope");
+                    break;
+                case Instruction.GetAtIndex:
+                    Console.WriteLine($"Get At Index ");
+                    break;
+                case Instruction.CreateListFromValues:
+                    Console.WriteLine($"Create List From Values [Value Count: {_code[++i]}]");
+                    break;
+                case Instruction.CreateListFromRange:
+                    Console.WriteLine("CreateListFromRange");
                     break;
                 default:
                     Console.WriteLine("Unexpected instruction / value: " + i);

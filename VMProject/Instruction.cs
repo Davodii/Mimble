@@ -35,6 +35,8 @@ public enum Instruction
     // VARIABLES
     StoreVar,           // StoreVar [ VarIndex ]
     LoadVar,            // LoadVar [ VarIndex ]
+    GetAtIndex,
+    StoreSubscript,
     DefFunction,
     CreateListFromValues,       // CreateListFromValues [ Value count ]
     CreateListFromRange,        // CreateListFromRange  - top three values on the stack are: 1. step, 2. upper bound, 3. lower bound
