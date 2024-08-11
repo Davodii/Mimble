@@ -35,6 +35,6 @@ public class CallFrame(UserDefined function, Environment environment)
 
     public override string ToString()
     {
-        return $"<Frame for function [{Function.ToString()}]>";
+        return $"<Frame for function [{Function}]>";
     }
 }

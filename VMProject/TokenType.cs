@@ -40,6 +40,4 @@ public enum TokenType
     If, Elif, Else, While, For, 
     In, Do, Does, End, Break,
     Continue, Function, Return
-    
-    //TODO: Complete this list
 }

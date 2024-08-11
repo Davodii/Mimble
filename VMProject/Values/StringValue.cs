@@ -4,12 +4,12 @@ public class StringValue : ConstantValue
 {
     public StringValue(string value) : base(ValueType.String)
     {
-        _value = value;
+        Value = value;
     }
     
     public string AsString()
     {
-        return (string)_value;
+        return (string)Value;
     }
 
     public override string ToString()
@@ -19,7 +19,7 @@ public class StringValue : ConstantValue
 
     public override bool Equals(object? obj)
     {
-        if (obj.GetType() != GetType()) return false;
+        if (obj == null || obj.GetType() != GetType()) return false;
         return ((StringValue)obj).AsString() == AsString();
     }
 }

@@ -1,26 +1,22 @@
+using VMProject.Exceptions;
+using VMProject.Values;
+using ValueType = VMProject.Values.ValueType;
+
 namespace VMProject;
 
 public class Chunk
 {
-    private const int InitSize = 8;
-    private const int GrowRate = 2;
-
     // Store the array of bytecode instructions
-    private List<byte> _code;
+    private readonly List<byte> _code = [];
     
     // Store constant values found within this chunk
     // Also used to get variable identifiers
-    private readonly List<Value> _constants;
+    private readonly List<Value> _constants = [];
 
     // Store info about the line regarding each index
     private readonly LineNumberTable<int> _lineNumberTable = new LineNumberTable<int>();
-    
-    public Chunk()
-    {
-        // Initialize the chunk
-        _code = new List<byte>();
-        _constants = new List<Value>();
-    }
+
+    // Initialize the chunk
 
     public void Write(byte data, int line)
     {
@@ -169,13 +165,13 @@ public class Chunk
                     Console.WriteLine("Not");
                     break;
                 case Instruction.Jump:
-                    Console.WriteLine($"Jump +0x{_code[++i].ToString("X2")}{_code[++i].ToString("X2")}");
+                    Console.WriteLine($"Jump +0x{_code[++i]:X2}{_code[++i]:X2}");
                     break;
                 case Instruction.JumpIfFalse:
-                    Console.WriteLine($"Jump if false +0x{_code[++i].ToString("X2")}{_code[++i].ToString("X2")}");
+                    Console.WriteLine($"Jump if false +0x{_code[++i]:X2}{_code[++i]:X2}");
                     break;
                 case Instruction.Loop:
-                    Console.WriteLine($"Loop -{_code[++i].ToString("X2")}{_code[++i].ToString("X2")}");
+                    Console.WriteLine($"Loop -0x{_code[++i]:X2}{_code[++i]:X2}");
                     break;
                 case Instruction.Call:
                     Console.WriteLine($"Call [Param Count: {_code[++i]}]");
@@ -220,7 +216,7 @@ public class Chunk
                     Console.WriteLine("Create Iterator");
                     break;
                 case Instruction.ForwardIterator:
-                    Console.WriteLine($"Forward Iterator +0x{_code[++i].ToString("X2")}{_code[++i].ToString("X2")}");
+                    Console.WriteLine($"Forward Iterator +0x{_code[++i]:X2}{_code[++i]:X2}");
                     break;
                 default:
                     Console.WriteLine("Unexpected instruction / value: " + i);

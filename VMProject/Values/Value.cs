@@ -1,6 +1,4 @@
-using VMProject.Exceptions;
-
-namespace VMProject;
+namespace VMProject.Values;
 
 public abstract class Value(ValueType type)
 {

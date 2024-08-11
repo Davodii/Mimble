@@ -1,6 +1,6 @@
 using VMProject.Functions;
 
-namespace VMProject;
+namespace VMProject.Values;
 
 public class FunctionValue(ValueType type, Function function) : Value(type)
 {

@@ -1,4 +1,4 @@
-namespace VMProject;
+namespace VMProject.Values;
 
 public class NullValue() : Value(ValueType.Null)
 {

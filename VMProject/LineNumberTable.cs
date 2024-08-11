@@ -1,15 +1,14 @@
 namespace VMProject;
 
-public class LineNumberTable<T>
+public class LineNumberTable<T> where T : notnull
 {
     private class Range(int start, int end)
     {
-        public int Start = start;
         public int End = end;
 
         public bool Contains(int i)
         {
-            return Start <= i && End >= i;
+            return start <= i && End >= i;
         }
     }
 

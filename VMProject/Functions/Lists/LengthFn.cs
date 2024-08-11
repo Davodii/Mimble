@@ -1,3 +1,7 @@
+using VMProject.Exceptions;
+using VMProject.Values;
+using ValueType = VMProject.Values.ValueType;
+
 namespace VMProject.Functions.Lists;
 
 public class LengthFn : Native

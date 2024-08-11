@@ -1,3 +1,6 @@
+using VMProject.Exceptions;
+using VMProject.Values;
+
 namespace VMProject;
 
 public class Environment(Environment enclosing = null!)

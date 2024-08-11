@@ -1,3 +1,6 @@
+using VMProject.Values;
+using ValueType = VMProject.Values.ValueType;
+
 namespace VMProject.Functions;
 
 public class UserDefined(string identifier, Chunk chunk) : Function(identifier)

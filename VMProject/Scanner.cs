@@ -1,3 +1,5 @@
+using VMProject.Exceptions;
+
 namespace VMProject;
 
 public class Scanner(string source)
@@ -70,12 +72,7 @@ public class Scanner(string source)
             return type1;
         }
 
-        if (CheckKeyword(offset, keyword2, type2) == type2)
-        {
-            return type2;
-        }
-
-        return TokenType.Identifier;
+        return CheckKeyword(offset, keyword2, type2) == type2 ? type2 : TokenType.Identifier;
     }
     
     private TokenType IdentifierType()
@@ -93,7 +90,10 @@ public class Scanner(string source)
             case 'e':
                 // end 
                 // else
-                return CheckTwoKeywords(1, "nd", "lse", TokenType.End, TokenType.Else);
+                // elif
+                if (CheckKeyword(1, "nd", TokenType.End) == TokenType.End) return TokenType.End;
+                if (CheckKeyword(2, "se", TokenType.Else) == TokenType.Else) return TokenType.Else;
+                return CheckKeyword(2, "if", TokenType.Elif);
             case 'f':
                 // for
                 // function

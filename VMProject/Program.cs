@@ -1,11 +1,8 @@
-﻿using System.Runtime.Intrinsics.X86;
+﻿namespace VMProject;
 
-namespace VMProject;
-
-class Program
+static class Program
 {
-    private static string testString = "a = 12\nb = a + 12\n";
-
+    // ReSharper disable once InconsistentNaming
     private static void REPL()
     {
         // begin running as if in a REPL

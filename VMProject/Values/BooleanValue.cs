@@ -1,15 +1,15 @@
-namespace VMProject;
+namespace VMProject.Values;
 
 public class BooleanValue : ConstantValue
 {
     public BooleanValue(bool value) : base(ValueType.Boolean)
     {
-        _value = value;
+        Value = value;
     }
     
     public bool AsBoolean()
     {
-        return (bool)_value;
+        return (bool)Value;
     }
     
     public override string ToString()

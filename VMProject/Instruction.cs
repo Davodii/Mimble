@@ -31,7 +31,6 @@ public enum Instruction
     JumpIfFalse,        // Increment ip by an offset if the value on the stack is false
     Loop,               // Decrement the ip by an offset    
     
-    //TODO: handle arrays and other things idk
     // VARIABLES
     StoreVar,           // StoreVar [ VarIndex ]
     LoadVar,            // LoadVar [ VarIndex ]

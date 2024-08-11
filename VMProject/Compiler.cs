@@ -1,5 +1,7 @@
+using VMProject.Exceptions;
 using VMProject.Functions;
 using VMProject.Values;
+using ValueType = VMProject.Values.ValueType;
 
 namespace VMProject;
 
@@ -11,7 +13,7 @@ public class Compiler
     private Token _current = null!;
     
     // ! Compiling
-    private readonly Stack<UserDefined> _functions = new Stack<UserDefined>();
+    private readonly Stack<UserDefined> _functions = new();
     
     private UserDefined CurrentFunction()
     {
@@ -55,7 +57,7 @@ public class Compiler
     {
         EmitByte(Instruction.Loop);
         int offset = CurrentFunction().Chunk.GetCodeCount() - loopStart + 2;
-        
+
         EmitByte((byte)((offset & 0xFF00) >> 8));
         EmitByte((byte)((offset & 0xFF)));
     }
@@ -103,7 +105,6 @@ public class Compiler
         else if (Match(TokenType.Eol))
         {
             // Empty line
-            return;
         }
         else
         {
@@ -155,7 +156,7 @@ public class Compiler
         Token identifier = _previous;
         
         // Check the current identifier exists, or, add as constant
-        int functionIndex = -1;
+        int functionIndex;
         try
         {
             functionIndex = CurrentFunction().Chunk.GetConstantIndex(identifier);
@@ -219,12 +220,6 @@ public class Compiler
 
     private void FunctionDeclaration()
     {
-        // Get the identifier
-        // )
-        // identifiers separated by colons
-        // ) 
-        // block
-        
         Token functionIdentifier = _current;
         int argumentCount = 0;
 
@@ -338,48 +333,41 @@ public class Compiler
         // Pop the expression from the stack if the expression is true
         EmitByte(Instruction.Pop);
         
-        Statement();
-
-        int elseJump = EmitJump(Instruction.Jump);
+        BeginScope();
+        Block();
+        EndScope();
+        
+        int jumpToEnd = EmitJump(Instruction.Jump);
         
         // Jump to elif if false
         PatchJump(jumpIf);
         // Pop the expression from the stack
         EmitByte(Instruction.Pop);
-        
-        // TODO: implement Elif statements
-        // if (Check(TokenType.Elif))
-        // {
-        //     ElifStatements();
-        // }
 
-        /*if (Match(TokenType.Else))
+        while (Match(TokenType.Elif))
         {
-            Statement();
-        }*/
+            Expression();
+            jumpIf = EmitJump(Instruction.JumpIfFalse);
+            EmitByte(Instruction.Pop);
+            
+            BeginScope();
+            Block();
+            EndScope();
 
-        PatchJump(elseJump);
-    }
-
-    private void ElifStatements()
-    {
-        // elif expression block
-        // elif statements
-        Expression();
-        
-        // Jump past statement if false
-        int jump = EmitJump(Instruction.JumpIfFalse);
-        EmitByte(Instruction.Pop);
-        
-        Statement();
-        
-        // Check if there are more elif statements
-        if (Check(TokenType.Elif))
-        {
-            ElifStatements();
+            int nextJumpToEnd = EmitJump(Instruction.Jump);
+            PatchJump(jumpIf);
+            jumpToEnd = nextJumpToEnd;
         }
-        
-        // Should be good rn
+
+        if (Match(TokenType.Else))
+        {
+            BeginScope();
+            Block();
+            EndScope();
+        }
+
+
+        PatchJump(jumpToEnd);
     }
 
     private void Block(bool afterFunction = false)
@@ -450,7 +438,7 @@ public class Compiler
         // Compute the left hand side of the expression
         // Push the result(s) to the stack  
 
-        int indexOfLHS = CurrentFunction().Chunk.GetCodeCount();
+        int indexOfLhs = CurrentFunction().Chunk.GetCodeCount();
         
         ComputeAtom();
         
@@ -476,7 +464,7 @@ public class Compiler
             Expression(nextMinPrecedence);
 
             // Emit the correct bytes to the chunk
-            HandleOperator(op, grouping, indexOfLHS);
+            HandleOperator(op, grouping, indexOfLhs);
         }
     }
 
@@ -564,15 +552,11 @@ public class Compiler
 
     private void HandleIdentifier()
     {
-        //TODO: handle identifiers inside of an expression 
-        
         // a
         // a[...]
         // a(...)
 
         Token identifier = _previous;
-        
-        // TODO: compare between arrays, variables and functions
         
         // Get the index of the identifier inside the current chunk's constants
         int index;
@@ -590,18 +574,6 @@ public class Compiler
         {
             FunctionCall();
         }
-        // else if (Match(TokenType.SqLeftBrace))
-        // {
-        //     // Array indexing
-        //     
-        //     // Get the index 
-        //     Expression();
-        //     
-        //     EmitByte(Instruction.LoadVar);
-        //     EmitByte((byte)index);
-        //     EmitByte(Instruction.GetAtIndex);
-        //     Consume(TokenType.SqRightBrace, "Expect ']' after array index.");
-        // }
         else
         {
             // Get the identifier and push onto the stack
@@ -618,7 +590,6 @@ public class Compiler
         // [1..20:3] - range
         // [1,2,3,3] - definition
         
-        // TODO: initialize as empty array
         if (Match(TokenType.SqRightBrace))
         {
             EmitByte(Instruction.CreateListFromValues);
@@ -640,7 +611,7 @@ public class Compiler
             }
             else
             {
-                // Maybe have a way to create automatically calcualte increment
+                // Maybe have a way to create automatically calculate increment
                 // e.g. [1..3] -> [1..3:1]
                 //      [1..-10] -> [1..-10:-1]
             }
@@ -665,10 +636,8 @@ public class Compiler
         Consume(TokenType.SqRightBrace, "Expect ']' after array definition.");
     }
     
-    private void HandleOperator(Token token, bool grouping, int indexOfLHS)
+    private void HandleOperator(Token token, bool grouping, int indexOfLhs)
     {
-        // TODO: change the signature of this function to be betterer
-        
         TokenType op = token.GetType();
         switch (op)
         {
@@ -726,18 +695,20 @@ public class Compiler
                 break;
             case TokenType.Equal:
                 // if (!identifier) throw new CompileTimeException(token, "Can only assign values to an identifier, not an expression.");
-                if (CurrentFunction().Chunk.GetByte(indexOfLHS) != (byte)Instruction.LoadVar || grouping)
+                if (CurrentFunction().Chunk.GetByte(indexOfLhs) != (byte)Instruction.LoadVar || grouping)
                     throw new CompileTimeException(token,
                         "Can only assign values to an identifier, not an expression.");
                 
                 // Pop load instruction and index
-                CurrentFunction().Chunk.RemoveInstruction(indexOfLHS);
-                byte identifierIndex = CurrentFunction().Chunk.RemoveInstruction(indexOfLHS);
+                CurrentFunction().Chunk.RemoveInstruction(indexOfLhs);
+                byte identifierIndex = CurrentFunction().Chunk.RemoveInstruction(indexOfLhs);
                 
                 // Add the store var
                 EmitByte(Instruction.StoreVar);
                 EmitByte(identifierIndex);
                 break;
+            default:
+                throw new CompileTimeException(_current, "Unexpected token, expected operator.");
         }
     }
     

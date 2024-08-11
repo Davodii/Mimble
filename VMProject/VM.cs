@@ -2,6 +2,7 @@ using System.Globalization;
 using VMProject.Exceptions;
 using VMProject.Functions;
 using VMProject.Values;
+using ValueType = VMProject.Values.ValueType;
 
 namespace VMProject;
 
@@ -35,7 +36,7 @@ public class VM
         return _valueStack.Pop();
     }
 
-    public Value Peek()
+    private Value Peek()
     {
         return _valueStack.Peek();
     }
@@ -71,6 +72,7 @@ public class VM
         return ((BooleanValue)val).AsBoolean() == false;
     }
 
+    // ReSharper disable once UnusedMember.Local
     private void PrintStackTrace()
     {
         Console.WriteLine("Value Stack:");
@@ -84,6 +86,7 @@ public class VM
         Console.WriteLine();
     }
 
+    // ReSharper disable once UnusedMember.Local
     private void PrintCallStack()
     {
         Console.WriteLine("Frame Stack:");
@@ -200,7 +203,6 @@ public class VM
         Value val1 = Pop();
         Value val2 = Pop();
                     
-        // TODO: update equals to be per value type
         Push(new BooleanValue(val1.Equals(val2)));
     }
     
@@ -353,7 +355,6 @@ public class VM
                 case Instruction.JumpIfFalse:
                 {
                     // Check if the top value is false
-                    // TODO: update IsFalse or Peek() to check for variables
                     if (IsFalse((ConstantValue)Peek()))
                     {
                         // Jump
@@ -510,7 +511,7 @@ public class VM
                         Push(next);
                         CurrentFrame().AddOffset(2); // skip over the jump bytes
                     }
-                    catch (IndexOutOfRangeException e)
+                    catch (IndexOutOfRangeException)
                     {
                         // iterator has finished, jump to the next part of the code
                         short jump = ReadShort();
@@ -538,7 +539,7 @@ public class VM
         _frames.Push(new CallFrame(mainFunction, mainEnvironment));
         
         // ! Testing purposes only
-        // mainFunction.PrintCode();
+        mainFunction.PrintCode();
         
         // Begin execution of the code
         Run();

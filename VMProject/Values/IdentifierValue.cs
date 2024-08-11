@@ -1,9 +1,9 @@
-namespace VMProject;
+namespace VMProject.Values;
 
 public class IdentifierValue : ConstantValue
 {
-    private string _identifier;
-    private Value _value;
+    private readonly string _identifier;
+    private new Value _value;
 
     public IdentifierValue(string identifier) : base(ValueType.Identifier)
     {

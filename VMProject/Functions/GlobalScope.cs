@@ -1,4 +1,7 @@
 using VMProject.Functions.Lists;
+using VMProject.Values;
+using ValueType = VMProject.Values.ValueType;
+
 namespace VMProject.Functions;
 
 public static class GlobalScope

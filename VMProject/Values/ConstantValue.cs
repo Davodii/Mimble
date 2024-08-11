@@ -1,19 +1,17 @@
-using VMProject.Exceptions;
-
-namespace VMProject;
+namespace VMProject.Values;
 
 public abstract class ConstantValue(ValueType type) : Value(type)
 {
-    protected object _value;
+    protected object Value = null!;
 
-    public ConstantValue(ValueType type, object value) : this(type)
+    protected ConstantValue(ValueType type, object value) : this(type)
     {
-        _value = value;
+        Value = value;
     }
     
     public override object GetValue()
     {
-        return _value;
+        return Value;
     }
     
     public static bool IsNumber(Value val)

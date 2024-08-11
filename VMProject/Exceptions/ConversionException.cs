@@ -1,3 +1,6 @@
+using VMProject.Values;
+using ValueType = VMProject.Values.ValueType;
+
 namespace VMProject.Exceptions;
 
 public sealed class ConversionException : Exception

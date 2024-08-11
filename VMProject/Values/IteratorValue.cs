@@ -1,23 +1,17 @@
 namespace VMProject.Values;
 
-public class IteratorValue : Value
+public class IteratorValue(ListValue list) : Value(ValueType.Iterator)
 {
-    private ListValue _list;
-    private int _current = 0;
-    
-    public IteratorValue(ListValue list) : base(ValueType.Iterator)
-    {
-        _list = list;
-    }
+    private int _current;
 
     public Value GetNext()
     {
-        if (_current >= _list.Count()) throw new IndexOutOfRangeException();
-        return _list.Get(_current++);
+        if (_current >= list.Count()) throw new IndexOutOfRangeException();
+        return list.Get(_current++);
     }
 
     public override object GetValue()
     {
-        throw new NotImplementedException();
+        return this;
     }
 }

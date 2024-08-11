@@ -1,4 +1,4 @@
-namespace VMProject;
+namespace VMProject.Exceptions;
 
 public sealed class CompileTimeException : Exception
 {

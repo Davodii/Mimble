@@ -1,10 +1,8 @@
-using System.Collections;
-
-namespace VMProject;
+namespace VMProject.Values;
 
 public class ListValue : Value
 {
-    private List<Value> _list = new List<Value>();
+    private readonly List<Value> _list = new List<Value>();
     
     public ListValue(int start, int end) : base(ValueType.List)
     {
