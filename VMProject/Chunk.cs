@@ -216,6 +216,12 @@ public class Chunk
                 case Instruction.CreateListFromRange:
                     Console.WriteLine("CreateListFromRange");
                     break;
+                case Instruction.CreateIterator:
+                    Console.WriteLine("Create Iterator");
+                    break;
+                case Instruction.ForwardIterator:
+                    Console.WriteLine($"Forward Iterator +0x{_code[++i].ToString("X2")}{_code[++i].ToString("X2")}");
+                    break;
                 default:
                     Console.WriteLine("Unexpected instruction / value: " + i);
                     break;

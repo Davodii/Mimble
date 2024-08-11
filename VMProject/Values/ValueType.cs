@@ -10,4 +10,5 @@ public enum ValueType
     UserDefinedFunction,
     NativeFunction,
     List,
+    Iterator,
 }

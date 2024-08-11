@@ -294,23 +294,39 @@ public class Compiler
 
     private void ForStatement()
     {
-        // throw new NotImplementedException();
-        // identifier
-        // in
-        // expression ??? 
-        // block
+        BeginScope();
         
-        // for identifier in Expression() do
-        // Statement list
-        // end
+        // Identifier
+        Consume(TokenType.Identifier, "Expect identifier as looping variable.");
+        int index; // index of the identifier inside the current chunk
+        try
+        {
+            index = CurrentFunction().Chunk.GetConstantIndex(_previous);
+        }
+        catch
+        {
+            // Add the constant to the constants list
+            index = CurrentFunction().Chunk.AddConstant(new StringValue(_previous.GetValue()));
+        }
+        
+        Consume(TokenType.In, "Expect 'in' after expression.");
 
-        //Identifier();
-
-        //Match(TokenType.In);
-
-        //Expression();
-
-        //Block();
+        // Array / list expression
+        Expression();
+        EmitByte(Instruction.CreateIterator);
+        
+        int loopStart = CurrentFunction().Chunk.GetCodeCount();
+        int forwardIterator = EmitJump(Instruction.ForwardIterator);
+        EmitByte(Instruction.StoreVar);
+        EmitByte((byte)index);
+        EmitByte(Instruction.Pop);
+        
+        Block();
+        
+        EmitLoop(loopStart);
+        PatchJump(forwardIterator);
+        EmitByte(Instruction.Pop);
+        EndScope();
     }
 
     private void IfStatement()
@@ -560,7 +576,6 @@ public class Compiler
         
         // Get the index of the identifier inside the current chunk's constants
         int index;
-
         try
         {
             index = CurrentFunction().Chunk.GetConstantIndex(identifier);

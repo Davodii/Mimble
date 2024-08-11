@@ -494,6 +494,30 @@ public class VM
                     Push(toStore);
                     break;
                 }
+                case Instruction.CreateIterator:
+                {
+                    ListValue list = (ListValue)Pop();
+                    IteratorValue iterator = new IteratorValue(list);
+                    Push(iterator);
+                    break;
+                }
+                case Instruction.ForwardIterator:
+                {
+                    IteratorValue iterator = (IteratorValue)Peek();
+                    try
+                    {
+                        Value next = iterator.GetNext();
+                        Push(next);
+                        CurrentFrame().AddOffset(2); // skip over the jump bytes
+                    }
+                    catch (IndexOutOfRangeException e)
+                    {
+                        // iterator has finished, jump to the next part of the code
+                        short jump = ReadShort();
+                        CurrentFrame().AddOffset(jump);
+                    }
+                    break;
+                }
                 default:
                     throw new ArgumentOutOfRangeException();
             }
