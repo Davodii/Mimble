@@ -407,6 +407,7 @@ public class Compiler
         
         // Assignment
         { TokenType.Equal, (true, 0)},
+        { TokenType.In, (false, 0)},
         
         // Mul / Div
         { TokenType.Star, (false, 1)},  
@@ -427,7 +428,6 @@ public class Compiler
         { TokenType.Or, (false, 4)},
         { TokenType.And, (false, 4)},
         { TokenType.Not, (true, 5)}
-        
     };
     
     private void Expression(int minPrecedence = 0)
@@ -679,6 +679,9 @@ public class Compiler
                 EmitByte(Instruction.Greater);
                 EmitByte(Instruction.Not);
                 break;
+            case TokenType.In:
+                // 
+                break;
             case TokenType.SqLeftBrace:
                 // Consume the indexing part
                 Consume(TokenType.SqRightBrace, "Expect ']' after array index.");
@@ -731,6 +734,7 @@ public class Compiler
             case TokenType.EqualEqual:  // ==
             case TokenType.Equal:       // =
             case TokenType.SqLeftBrace: // [
+            case TokenType.In:          // in
                 return true;
         }
         

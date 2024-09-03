@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mimble", "Mimble\Mimble.csproj", "{BD298807-C909-4DB2-B971-50C30D6ED60D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BD298807-C909-4DB2-B971-50C30D6ED60D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BD298807-C909-4DB2-B971-50C30D6ED60D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BD298807-C909-4DB2-B971-50C30D6ED60D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BD298807-C909-4DB2-B971-50C30D6ED60D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
