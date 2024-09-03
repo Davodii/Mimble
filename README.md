@@ -51,7 +51,7 @@ A block is a chunk of code. Inside Mimble, blocks are written using `do` and `en
 do
     # this is a block
 end
-``
+```
 
 ### Variables
 Varible declaration and initialization is preformed in the same assignmnet expression:
