@@ -1,4 +1,3 @@
-using System.Globalization;
 using Mimble.Exceptions;
 using Mimble.Functions;
 using Mimble.Values;

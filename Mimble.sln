@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.9.34728.123
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mimble.Console", "Mimble\MimbleApplication\Mimble.Console.csproj", "{188A08D4-6BAF-4910-901A-D2F5E78551B7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mimble.Console", "MimbleApplication\Mimble.Console.csproj", "{188A08D4-6BAF-4910-901A-D2F5E78551B7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mimble.Library", "Mimble\MimbleLibrary\Mimble.Library.csproj", "{922280CD-4813-4027-8047-CBF39C5AFEE9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mimble.Library", "MimbleLibrary\Mimble.Library.csproj", "{922280CD-4813-4027-8047-CBF39C5AFEE9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
