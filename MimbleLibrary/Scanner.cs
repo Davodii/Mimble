@@ -25,15 +25,12 @@ public class Scanner(string source)
 
     private char PeekNext()
     {
-        if (IsAtEnd()) return '\0';
-        return source[_current + 1];
+        return IsAtEnd() ? '\0' : source[_current + 1];
     }
 
     private bool IsAtEnd()
     {
-        if (_current >= source.Length || _start >= source.Length) return true;
-
-        return false;
+        return _current >= source.Length || _start >= source.Length;
     }
 
     private bool Match(char c)
@@ -137,13 +134,11 @@ public class Scanner(string source)
         while (!IsAtEnd() && IsDigit(Peek())) Advance();
         
         // Check for fractional part
-        if (Peek() == '.' && IsDigit(PeekNext()))
-        {
-            Advance();
+        if (Peek() != '.' || !IsDigit(PeekNext())) return MakeToken(TokenType.Number);
+        Advance();
 
-            // Continue reading until no more digits are found
-            while (IsDigit(Peek())) Advance();
-        }
+        // Continue reading until no more digits are found
+        while (IsDigit(Peek())) Advance();
 
         return MakeToken(TokenType.Number);
     }
@@ -176,8 +171,6 @@ public class Scanner(string source)
             switch (Peek())
             {
                 case '#':
-                    // TODO: make this better, check for end of file and stop second advance, 
-                    //       or include a way to skip newlines inside the compiler
                     while (Peek() != '\n' && !IsAtEnd()) Advance();
                     _lines++;
                     Advance();
@@ -239,8 +232,6 @@ public class Scanner(string source)
             case '\n':
                 _lines++;
                 return MakeToken(TokenType.Eol);
-            /*case '!':
-                return MakeToken(Match('=') ? TokenType.BangEqual : TokenType.Bang);*/
             case '=':
                 return MakeToken(Match('=') ? TokenType.EqualEqual : TokenType.Equal);
             case '>':

@@ -4,11 +4,11 @@ namespace Mimble.Functions;
 
 public class PrintFn : Native
 {
-    private static readonly PrintFn PPrintFn = new PrintFn();
+    private static readonly PrintFn PPrintFn = new();
 
     private PrintFn() : base("print")
     {
-        Arity = 1;
+        arity = 1;
     }
 
     public static PrintFn GetPrintFn()

@@ -2,14 +2,14 @@ namespace Mimble.Functions;
 
 public abstract class Function(string identifier)
 {
-    public string Identifier { get; } = identifier;
+    public string identifier { get; } = identifier;
     
-    public int Arity { get; set; }
+    public int arity { get; set; }
 
 
     public override string ToString()
     {
-        return $"<Function {Identifier} ({Arity} params)>";
+        return $"<Function {identifier} ({arity} params)>";
     }
 
     public abstract void PrintCode();

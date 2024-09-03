@@ -9,7 +9,7 @@ public abstract class Native(string identifier) : Function(identifier)
 
     public override string ToString()
     {
-        return $"<Native Function {Identifier} ({Arity} params)>";
+        return $"<Native Function {identifier} ({arity} params)>";
     }
 
     public override void PrintCode()

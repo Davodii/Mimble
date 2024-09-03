@@ -6,6 +6,11 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>Mimble</RootNamespace>
+        <DefineConstants>DEBUG</DefineConstants>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+      <DefineConstants>DEBUG;TRACE_FUNCTIONS;TRACE_COMPILED</DefineConstants>
     </PropertyGroup>
 
 </Project>

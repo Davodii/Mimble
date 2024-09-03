@@ -15,7 +15,7 @@ public class AppendFn : Native
 
     public AppendFn() : base("length")
     {
-        Arity = 2;
+        arity = 2;
     }
 
     public override void Execute(VM vm)

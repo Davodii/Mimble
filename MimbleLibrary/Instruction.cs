@@ -50,5 +50,5 @@ public enum Instruction
     
     // FUNCTIONS
     Call,
-    Return,
+    Return
 }

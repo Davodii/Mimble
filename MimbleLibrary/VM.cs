@@ -14,10 +14,10 @@ public class VM
 
     private readonly Stack<Value> _valueStack = new();
     private readonly Stack<CallFrame> _frames = new();
-    
+
     private UserDefined CurrentFunction()
     {
-        return CurrentFrame().Function;
+        return CurrentFrame().function;
     }
 
     private CallFrame CurrentFrame()
@@ -35,7 +35,7 @@ public class VM
         return _valueStack.Pop();
     }
 
-    private Value Peek()
+    public Value Peek()
     {
         return _valueStack.Peek();
     }
@@ -57,7 +57,7 @@ public class VM
 
     public int CurrentLineNumber()
     {
-        return CurrentFunction().Chunk.GetLine(CurrentFrame().GetIP());
+        return CurrentFunction().GetChunk().GetLine(CurrentFrame().GetIP());
     }
     
     #region Utility Functions
@@ -248,8 +248,8 @@ public class VM
     
     private void DefineFunction()
     {
-        FunctionValue functionValue = (FunctionValue)CurrentFunction().Chunk.GetConstant(ReadByte());
-        string identifier = functionValue.GetValue().Identifier;
+        FunctionValue functionValue = (FunctionValue)CurrentFunction().GetChunk().GetConstant(ReadByte());
+        string identifier = functionValue.GetValue().identifier;
 
         // Check to see if the function is already defined
         if (CurrentFrame().GetEnvironment().Defined(identifier))
@@ -269,11 +269,11 @@ public class VM
         // Get the arity
         int argumentCount = ReadByte();
 
-        if (argumentCount != function.Arity)
+        if (argumentCount != function.arity)
         {
             string relative;
-            if (argumentCount < function.Arity) relative = "too few";
-            else if (argumentCount > function.Arity) relative = "too many";
+            if (argumentCount < function.arity) relative = "too few";
+            else if (argumentCount > function.arity) relative = "too many";
             else relative = "no";
             throw new RunTimeException(CurrentLineNumber(), $"The function was called with {relative} arguments.");
         }
@@ -324,7 +324,7 @@ public class VM
                     Push(new BooleanValue(true));
                     break;
                 case Instruction.LoadConstant:
-                    Value constant = CurrentFunction().Chunk.GetConstant(ReadByte());
+                    Value constant = CurrentFunction().GetChunk().GetConstant(ReadByte());
                     Push(constant);
                     break;
                 case Instruction.Negate: // -
@@ -412,7 +412,7 @@ public class VM
                     // Pop the top of the stack and store it into the variable given by the second 
                     Value val = Pop(); // to store inside the variable
 
-                    StringValue identifier = (StringValue)CurrentFunction().Chunk.GetConstant(ReadByte());
+                    StringValue identifier = (StringValue)CurrentFunction().GetChunk().GetConstant(ReadByte());
                     
                     // Store the value inside the identifier in the list
                     CurrentFrame().GetEnvironment().Assign(identifier.AsString(), val);
@@ -422,7 +422,7 @@ public class VM
                 }
                 case Instruction.LoadVar:
                 {
-                    StringValue identifier = (StringValue)CurrentFunction().Chunk.GetConstant(ReadByte());
+                    StringValue identifier = (StringValue)CurrentFunction().GetChunk().GetConstant(ReadByte());
                     
                     Value value = CurrentFrame().GetEnvironment().Get(identifier.AsString());
                     
@@ -447,9 +447,6 @@ public class VM
                         return;
                     }
                     
-                    // ! Might be memory leak on the stack since the function may just be called 
-                    // ! like 'functionCall()' but if it does not return a value, then 'null' will be
-                    // ! pushed to the stack
                     Push(value);
                     break;
                 }
@@ -548,9 +545,10 @@ public class VM
         Environment mainEnvironment = new Environment(global);
         _frames.Push(new CallFrame(mainFunction, mainEnvironment));
         
-        // ! Testing purposes only
-        mainFunction.PrintCode();
         
+#if TRACE_COMPILED
+        mainFunction.PrintCode();
+#endif
         // Begin execution of the code
         Run();
         

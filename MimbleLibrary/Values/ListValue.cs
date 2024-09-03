@@ -2,7 +2,7 @@ namespace Mimble.Values;
 
 public class ListValue : Value
 {
-    private readonly List<Value> _list = new List<Value>();
+    private readonly List<Value> _list = new();
     
     public ListValue(int start, int end) : base(ValueType.List)
     {

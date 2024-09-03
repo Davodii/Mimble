@@ -25,12 +25,12 @@ public class Compiler
     private void EmitByte(Instruction op)
     {
         // Write the op to the chunk
-        CurrentFunction().Chunk.Write((byte)op, _current.GetLine());
+        CurrentFunction().GetChunk().Write((byte)op, _current.GetLine());
     }
 
     private void EmitByte(byte val)
     {
-        CurrentFunction().Chunk.Write(val, _current.GetLine());
+        CurrentFunction().GetChunk().Write(val, _current.GetLine());
     }
 
     private int EmitJump(Instruction op)
@@ -40,26 +40,26 @@ public class Compiler
         EmitByte(val:0);
 
         // Return index of the JumpIfFalse instruction
-        return CurrentFunction().Chunk.GetCodeCount() - 2;
+        return CurrentFunction().GetChunk().GetCodeCount() - 2;
     }
 
     private void PatchJump(int offset)
     {
         // Get the jump instruction 
-        int jump = CurrentFunction().Chunk.GetCodeCount() - offset - 2;
+        int jump = CurrentFunction().GetChunk().GetCodeCount() - offset - 2;
         
         // Store the jump in the next two bytes (after the jump instruction)
-        CurrentFunction().Chunk.Write(offset, (byte)((jump & 0xFF00) >> 8));
-        CurrentFunction().Chunk.Write(offset + 1, (byte)(jump & 0xFF));
+        CurrentFunction().GetChunk().Write(offset, (byte)((jump & 0xFF00) >> 8));
+        CurrentFunction().GetChunk().Write(offset + 1, (byte)(jump & 0xFF));
     }
 
     private void EmitLoop(int loopStart)
     {
         EmitByte(Instruction.Loop);
-        int offset = CurrentFunction().Chunk.GetCodeCount() - loopStart + 2;
+        int offset = CurrentFunction().GetChunk().GetCodeCount() - loopStart + 2;
 
         EmitByte((byte)((offset & 0xFF00) >> 8));
-        EmitByte((byte)((offset & 0xFF)));
+        EmitByte((byte)(offset & 0xFF));
     }
     
     #endregion
@@ -159,11 +159,11 @@ public class Compiler
         int functionIndex;
         try
         {
-            functionIndex = CurrentFunction().Chunk.GetConstantIndex(identifier);
+            functionIndex = CurrentFunction().GetChunk().GetConstantIndex(identifier);
         }
         catch
         {
-            functionIndex = CurrentFunction().Chunk.AddConstant(new StringValue(identifier.GetValue()));
+            functionIndex = CurrentFunction().GetChunk().AddConstant(new StringValue(identifier.GetValue()));
         }
         
         Consume(TokenType.LeftParen, "Expect '(' after function identifier.");
@@ -196,8 +196,11 @@ public class Compiler
     
     private void ReturnStatement()
     {
-        //TODO: check not at the top level of the program and 
-        //      actually inside of a function
+        if (_functions.Count == 1)
+        {
+            // Inside the main function
+            throw new CompileTimeException(_current, "Cannot return when not inside a function.");
+        }
 
         if (Match(TokenType.Eol) || Match(TokenType.Eof))
         {
@@ -237,7 +240,7 @@ public class Compiler
                 // ! Define variable to the function's constants
                 Token identifier = _current;
                 // Add the identifier to the function's constants
-                int index = newFunction.Chunk.AddConstant(new IdentifierValue(identifier.GetValue()));
+                int index = newFunction.GetChunk().AddConstant(new IdentifierValue(identifier.GetValue()));
                 EmitByte(Instruction.StoreVar);
                 EmitByte((byte)index);
                
@@ -245,7 +248,7 @@ public class Compiler
             } while (Match(TokenType.Comma));
         }
 
-        newFunction.Arity = argumentCount;
+        newFunction.arity = argumentCount;
         Consume(TokenType.RightParen, "Expect ')' after parameters.");
         
         // ! Begin block
@@ -260,7 +263,7 @@ public class Compiler
 
         Value functionValue = new FunctionValue(ValueType.UserDefinedFunction, newFunction);
         _functions.Pop();
-        int functionIndex = CurrentFunction().Chunk.AddConstant(functionValue);
+        int functionIndex = CurrentFunction().GetChunk().AddConstant(functionValue);
         EmitByte(Instruction.DefFunction);
         EmitByte((byte)functionIndex);
     }
@@ -268,7 +271,7 @@ public class Compiler
     private void WhileStatement()
     {
         BeginScope();
-        int loopStart = CurrentFunction().Chunk.GetCodeCount();
+        int loopStart = CurrentFunction().GetChunk().GetCodeCount();
         Expression();
         
         // Jump past body if expression is false
@@ -296,12 +299,12 @@ public class Compiler
         int index; // index of the identifier inside the current chunk
         try
         {
-            index = CurrentFunction().Chunk.GetConstantIndex(_previous);
+            index = CurrentFunction().GetChunk().GetConstantIndex(_previous);
         }
         catch
         {
             // Add the constant to the constants list
-            index = CurrentFunction().Chunk.AddConstant(new StringValue(_previous.GetValue()));
+            index = CurrentFunction().GetChunk().AddConstant(new StringValue(_previous.GetValue()));
         }
         
         Consume(TokenType.In, "Expect 'in' after expression.");
@@ -310,7 +313,7 @@ public class Compiler
         Expression();
         EmitByte(Instruction.CreateIterator);
         
-        int loopStart = CurrentFunction().Chunk.GetCodeCount();
+        int loopStart = CurrentFunction().GetChunk().GetCodeCount();
         int forwardIterator = EmitJump(Instruction.ForwardIterator);
         EmitByte(Instruction.StoreVar);
         EmitByte((byte)index);
@@ -401,7 +404,7 @@ public class Compiler
     #endregion
     
     #region Expressions
-    private readonly Dictionary<TokenType, (bool, int)> _operatorInfo = new Dictionary<TokenType, (bool, int)>()
+    private readonly Dictionary<TokenType, (bool, int)> _operatorInfo = new()
     {
         { TokenType.SqLeftBrace, (false, 0)},
         
@@ -438,13 +441,13 @@ public class Compiler
         // Compute the left hand side of the expression
         // Push the result(s) to the stack  
 
-        int indexOfLhs = CurrentFunction().Chunk.GetCodeCount();
+        int indexOfLhs = CurrentFunction().GetChunk().GetCodeCount();
         
         ComputeAtom();
         
         bool grouping = _previous.GetType() == TokenType.RightParen;
         
-        // Continue until an operator of lower precedence than minPrec is found
+        // Continue until an operator of lower precedence than minPrecedence is found
         while (true)
         {
             if (!IsOperator(_current) || _operatorInfo[_current.GetType()].Item2 < minPrecedence) 
@@ -453,10 +456,8 @@ public class Compiler
             // The current token is an operator
             
             // Get the precedence and associativity
-            var opInfoTuple = _operatorInfo[_current.GetType()];
+            var (rightAssociative, precedence) = _operatorInfo[_current.GetType()];
             var op = _current;
-            int precedence = opInfoTuple.Item2;
-            bool rightAssociative = opInfoTuple.Item1;
             int nextMinPrecedence = rightAssociative ? precedence : precedence + 1;
             
             // Consume the current token and prepare the next one for the recursive call
@@ -544,7 +545,7 @@ public class Compiler
             throw new CompileTimeException(_current, "Current token is not a constant value.");
         }
 
-        int index = CurrentFunction().Chunk.AddConstant(val);
+        int index = CurrentFunction().GetChunk().AddConstant(val);
         
         EmitByte(Instruction.LoadConstant);
         EmitByte((byte)index);
@@ -562,12 +563,12 @@ public class Compiler
         int index;
         try
         {
-            index = CurrentFunction().Chunk.GetConstantIndex(identifier);
+            index = CurrentFunction().GetChunk().GetConstantIndex(identifier);
         }
         catch
         {
             // Add the constant to the constants list
-            index = CurrentFunction().Chunk.AddConstant(new StringValue(identifier.GetValue()));
+            index = CurrentFunction().GetChunk().AddConstant(new StringValue(identifier.GetValue()));
         }
         
         if (Check(TokenType.LeftParen))
@@ -611,7 +612,7 @@ public class Compiler
             }
             else
             {
-                // Maybe have a way to create automatically calculate increment
+                // TODO: Maybe have a way to create automatically calculate increment
                 // e.g. [1..3] -> [1..3:1]
                 //      [1..-10] -> [1..-10:-1]
             }
@@ -699,13 +700,13 @@ public class Compiler
                 break;
             case TokenType.Equal:
                 // if (!identifier) throw new CompileTimeException(token, "Can only assign values to an identifier, not an expression.");
-                if (CurrentFunction().Chunk.GetByte(indexOfLhs) != (byte)Instruction.LoadVar || grouping)
+                if (CurrentFunction().GetChunk().GetByte(indexOfLhs) != (byte)Instruction.LoadVar || grouping)
                     throw new CompileTimeException(token,
                         "Can only assign values to an identifier, not an expression.");
                 
                 // Pop load instruction and index
-                CurrentFunction().Chunk.RemoveInstruction(indexOfLhs);
-                byte identifierIndex = CurrentFunction().Chunk.RemoveInstruction(indexOfLhs);
+                CurrentFunction().GetChunk().RemoveInstruction(indexOfLhs);
+                byte identifierIndex = CurrentFunction().GetChunk().RemoveInstruction(indexOfLhs);
                 
                 // Add the store var
                 EmitByte(Instruction.StoreVar);

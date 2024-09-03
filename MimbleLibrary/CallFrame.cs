@@ -4,12 +4,12 @@ namespace Mimble;
 
 public class CallFrame(UserDefined function, Environment environment)
 {
-    public UserDefined Function { get; } = function;
+    public UserDefined function { get; } = function;
     private int _ip;
 
     public byte ReadByte()
     {
-        return Function.Chunk.GetByte(_ip++);
+        return function.GetChunk().GetByte(_ip++);
     }
 
     // ReSharper disable once InconsistentNaming
@@ -35,6 +35,6 @@ public class CallFrame(UserDefined function, Environment environment)
 
     public override string ToString()
     {
-        return $"<Frame for function [{Function}]>";
+        return $"<Frame for function [{function}]>";
     }
 }

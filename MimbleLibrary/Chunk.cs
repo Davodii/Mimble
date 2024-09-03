@@ -14,7 +14,7 @@ public class Chunk
     private readonly List<Value> _constants = [];
 
     // Store info about the line regarding each index
-    private readonly LineNumberTable<int> _lineNumberTable = new LineNumberTable<int>();
+    private readonly LineNumberTable<int> _lineNumberTable = new();
 
     // Initialize the chunk
 

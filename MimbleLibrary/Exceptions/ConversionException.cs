@@ -1,6 +1,5 @@
 using Mimble.Values;
 using Values_ValueType = Mimble.Values.ValueType;
-using ValueType = Mimble.Values.ValueType;
 
 namespace Mimble.Exceptions;
 

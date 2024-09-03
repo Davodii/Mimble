@@ -22,4 +22,9 @@ public class StringValue : ConstantValue
         if (obj == null || obj.GetType() != GetType()) return false;
         return ((StringValue)obj).AsString() == AsString();
     }
+
+    public override int GetHashCode()
+    {
+        return AsString().GetHashCode();
+    }
 }

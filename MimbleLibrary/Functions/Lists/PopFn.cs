@@ -14,23 +14,13 @@ public class PopFn : Native
 
     private PopFn() : base("pop")
     {
-        Arity = 2;
+        arity = 2;
     }
 
     public override void Execute(VM vm)
     {
-        ConstantValue indexValue;
-        ListValue listValue;
-        try
-        {
-            indexValue = (ConstantValue)vm.Pop();
-            listValue = (ListValue)vm.Pop();
-        }
-        catch (Exception e)
-        {
-            // print the error
-            throw;
-        }
+        var indexValue = (ConstantValue)vm.Pop();
+        var listValue = (ListValue)vm.Pop();
 
         if (ConstantValue.IsNumber(indexValue))
             throw new RunTimeException(vm.CurrentLineNumber(), $"Expected a number but got '{indexValue.GetValueType()}'.");

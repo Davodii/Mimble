@@ -13,7 +13,7 @@ public abstract class Value(ValueType type)
     {
         if (obj == null) return false;
         
-        if (obj.GetType() != this.GetType()) return false;
+        if (obj.GetType() != GetType()) return false;
         
         return GetValue() == ((Value)obj).GetValue() && type.Equals(((Value)obj).GetValueType());
     }
@@ -22,8 +22,10 @@ public abstract class Value(ValueType type)
     {
         return $"[ {type.ToString()} ]";
     }
-    
-    // TODO: make these throw a conversion error that is picked up by the vm during runtime
-    
-    
+
+    public override int GetHashCode()
+    {
+        // ReSharper disable once BaseObjectGetHashCodeCallInGetHashCode
+        return base.GetHashCode();
+    }
 }

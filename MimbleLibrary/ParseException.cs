@@ -7,19 +7,19 @@ public class ParseException : Exception
     
     public ParseException(int start, int end)
     {
-        this.Start = start;
-        this.End = end;
+        Start = start;
+        End = end;
     }
 
     public ParseException(int start, int end, string msg) : base(msg)
     {
-        this.Start = start;
-        this.End = end;
+        Start = start;
+        End = end;
     }
 
     public ParseException(int start, int end, string msg, Exception inner) : base(msg, inner)
     {
-        this.Start = start;
-        this.End = end;
+        Start = start;
+        End = end;
     }
 }

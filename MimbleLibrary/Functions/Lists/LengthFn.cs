@@ -15,7 +15,7 @@ public class LengthFn : Native
 
     public LengthFn() : base("length")
     {
-        Arity = 1;
+        arity = 1;
     }
 
     public override void Execute(VM vm)

@@ -36,4 +36,9 @@ public class NumberValue : ConstantValue
         if (obj == null || obj.GetType() != this.GetType()) return false;
         return Math.Abs(((NumberValue)obj).AsNumber() - AsNumber()) < 0.001f;
     }
+
+    public override int GetHashCode()
+    {
+        return AsNumber().GetHashCode();
+    }
 }
