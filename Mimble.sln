@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.9.34728.123
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mimble", "Mimble\Mimble.csproj", "{BD298807-C909-4DB2-B971-50C30D6ED60D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mimble.Console", "Mimble\MimbleApplication\Mimble.Console.csproj", "{188A08D4-6BAF-4910-901A-D2F5E78551B7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mimble.Library", "Mimble\MimbleLibrary\Mimble.Library.csproj", "{922280CD-4813-4027-8047-CBF39C5AFEE9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,10 +13,14 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{BD298807-C909-4DB2-B971-50C30D6ED60D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BD298807-C909-4DB2-B971-50C30D6ED60D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BD298807-C909-4DB2-B971-50C30D6ED60D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BD298807-C909-4DB2-B971-50C30D6ED60D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{188A08D4-6BAF-4910-901A-D2F5E78551B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{188A08D4-6BAF-4910-901A-D2F5E78551B7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{188A08D4-6BAF-4910-901A-D2F5E78551B7}.Debug|Any CPU.ActiveCfg = Release|Any CPU
+		{188A08D4-6BAF-4910-901A-D2F5E78551B7}.Debug|Any CPU.Build.0 = Release|Any CPU
+		{922280CD-4813-4027-8047-CBF39C5AFEE9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{922280CD-4813-4027-8047-CBF39C5AFEE9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{922280CD-4813-4027-8047-CBF39C5AFEE9}.Debug|Any CPU.ActiveCfg = Release|Any CPU
+		{922280CD-4813-4027-8047-CBF39C5AFEE9}.Debug|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
