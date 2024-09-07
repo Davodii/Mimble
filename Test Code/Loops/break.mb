@@ -1,0 +1,10 @@
+a = [1,2,3,4,5]
+
+for b in a do
+    if b == 5 do
+        print("Break")
+        break
+    end
+
+    print(b)
+end

@@ -149,11 +149,10 @@ public class VM
             case Instruction.Divide:
                 Push(new NumberValue(val2Double / val1Double));
                 break;
+            default:
+                // Should be unreachable
+                throw new RunTimeException(CurrentLineNumber(), $"Not a binary operator: '{op}'");
         }
-        
-        
-        // Should be unreachable
-        throw new RunTimeException(CurrentLineNumber(), "Not a binary operator.");
     }
     
     private void Or()
@@ -546,9 +545,8 @@ public class VM
         _frames.Push(new CallFrame(mainFunction, mainEnvironment));
         
         
-#if TRACE_COMPILED
-        mainFunction.PrintCode();
-#endif
+        // mainFunction.PrintCode();
+
         // Begin execution of the code
         Run();
         

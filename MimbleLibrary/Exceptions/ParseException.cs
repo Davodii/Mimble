@@ -1,4 +1,4 @@
-namespace Mimble;
+namespace Mimble.Exceptions;
 
 public class ParseException : Exception
 {

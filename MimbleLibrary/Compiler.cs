@@ -14,6 +14,7 @@ public class Compiler
     
     // ! Compiling
     private readonly Stack<UserDefined> _functions = new();
+    private readonly Stack<LoopFrame> _loops = new();
     
     private UserDefined CurrentFunction()
     {
@@ -138,6 +139,18 @@ public class Compiler
         {
             ReturnStatement();
         }
+        else if (Match(TokenType.Continue))
+        {
+            if (_loops.Count == 0) throw new CompileTimeException(_previous, "Cannot 'continue' when not in a loop.");
+            int jump = EmitJump(Instruction.Jump);
+            _loops.Peek().Continues.Add(jump);
+        }
+        else if (Match(TokenType.Break))
+        {
+            if (_loops.Count == 0) throw new CompileTimeException(_previous, "Cannot 'break' when not in a loop.");
+            int jump = EmitJump(Instruction.Jump);
+            _loops.Peek().Breaks.Add(jump);
+        }
         else if (Check(TokenType.Do))
         {
             BeginScope();
@@ -194,9 +207,9 @@ public class Compiler
         
     }
     
-    private void ReturnStatement()
+    private void ReturnStatement(bool exitMain = false)
     {
-        if (_functions.Count == 1)
+        if (_functions.Count == 1 && !exitMain)
         {
             // Inside the main function
             throw new CompileTimeException(_current, "Cannot return when not inside a function.");
@@ -272,6 +285,10 @@ public class Compiler
     {
         BeginScope();
         int loopStart = CurrentFunction().GetChunk().GetCodeCount();
+
+        LoopFrame frame = new LoopFrame();
+        _loops.Push(frame);
+        
         Expression();
         
         // Jump past body if expression is false
@@ -279,15 +296,27 @@ public class Compiler
         EmitByte(Instruction.Pop);
         
         Block();
+
+        // Patch continues
+        foreach (var continueJump in frame.Continues)
+        {
+            PatchJump(continueJump);
+        }
         
         // Loop back to the expression
         EmitLoop(loopStart);
-        EndScope();
         
         // Patch the jump
         PatchJump(exitJump);
         EmitByte(Instruction.Pop);
         
+        // Path the breaks
+        foreach (var breakJump in frame.Breaks)
+        {
+            PatchJump(breakJump);
+        }
+        
+        EndScope();
     }
 
     private void ForStatement()
@@ -315,15 +344,32 @@ public class Compiler
         
         int loopStart = CurrentFunction().GetChunk().GetCodeCount();
         int forwardIterator = EmitJump(Instruction.ForwardIterator);
+        
+        LoopFrame frame = new LoopFrame();
+        _loops.Push(frame);
+        
         EmitByte(Instruction.StoreVar);
         EmitByte((byte)index);
         EmitByte(Instruction.Pop);
         
         Block();
         
+        // Patch continues
+        foreach (var continueJump in frame.Continues)
+        {
+            PatchJump(continueJump);
+        }
+        
         EmitLoop(loopStart);
         PatchJump(forwardIterator);
         EmitByte(Instruction.Pop);
+        
+        // Path the breaks
+        foreach (var breakJump in frame.Breaks)
+        {
+            PatchJump(breakJump);
+        }
+        
         EndScope();
     }
 
@@ -761,7 +807,7 @@ public class Compiler
             Declaration();
         }
         
-        ReturnStatement();
+        ReturnStatement(exitMain: true);
         
         return main;
     }
