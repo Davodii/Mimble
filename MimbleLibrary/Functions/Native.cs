@@ -1,7 +1,11 @@
 namespace Mimble.Functions;
 
-public abstract class Native(string identifier) : Function(identifier)
+public abstract class Native : Function
 {
+    protected Native(string identifier) : base(identifier)
+    {
+    }
+
     /// <summary>
     /// Execute the native function
     /// </summary>

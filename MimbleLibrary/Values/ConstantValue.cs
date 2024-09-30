@@ -1,6 +1,6 @@
 namespace Mimble.Values;
 
-public abstract class ConstantValue(ValueType type) : Value(type)
+public abstract class ConstantValue : Value
 {
     protected object Value = null!;
 
@@ -8,7 +8,11 @@ public abstract class ConstantValue(ValueType type) : Value(type)
     {
         Value = value;
     }
-    
+
+    protected ConstantValue(ValueType type) : base(type)
+    {
+    }
+
     public override object GetValue()
     {
         return Value;

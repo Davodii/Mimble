@@ -2,10 +2,17 @@ using Mimble.Functions;
 
 namespace Mimble;
 
-public class CallFrame(UserDefined function, Environment environment)
+public class CallFrame
 {
-    public UserDefined function { get; } = function;
+    public UserDefined function { get; }
     private int _ip;
+    private Environment _environment;
+
+    public CallFrame(UserDefined function, Environment environment)
+    {
+        _environment = environment;
+        this.function = function;
+    }
 
     public byte ReadByte()
     {
@@ -25,12 +32,12 @@ public class CallFrame(UserDefined function, Environment environment)
 
     public Environment GetEnvironment()
     {
-        return environment;
+        return _environment;
     }
 
     public void SetEnvironment(Environment environment1)
     {
-        environment = environment1;
+        _environment = environment1;
     }
 
     public override string ToString()

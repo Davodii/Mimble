@@ -791,10 +791,9 @@ public class Compiler
     
     #endregion
 
-    public UserDefined Compile(string source)
+    public UserDefined Compile(Scanner scanner)
     {
-        // Initialize the scanner
-        _scanner = new Scanner(source);
+        _scanner = scanner;
 
         UserDefined main = new UserDefined("main", new Chunk());
         _functions.Push(main);

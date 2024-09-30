@@ -1,12 +1,19 @@
 namespace Mimble.Values;
 
-public abstract class Value(ValueType type)
+public abstract class Value
 {
+    private readonly ValueType _type;
+
+    protected Value(ValueType type)
+    {
+        _type = type;
+    }
+
     public abstract object GetValue();
 
     public ValueType GetValueType()
     {
-        return type;
+        return _type;
     }
 
     public override bool Equals(object? obj)
@@ -15,12 +22,12 @@ public abstract class Value(ValueType type)
         
         if (obj.GetType() != GetType()) return false;
         
-        return GetValue() == ((Value)obj).GetValue() && type.Equals(((Value)obj).GetValueType());
+        return GetValue() == ((Value)obj).GetValue() && _type.Equals(((Value)obj).GetValueType());
     }
 
     public override string ToString()
     {
-        return $"[ {type.ToString()} ]";
+        return $"[ {_type.ToString()} ]";
     }
 
     public override int GetHashCode()

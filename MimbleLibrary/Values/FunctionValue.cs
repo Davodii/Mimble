@@ -2,15 +2,22 @@ using Mimble.Functions;
 
 namespace Mimble.Values;
 
-public class FunctionValue(ValueType type, Function function) : Value(type)
+public class FunctionValue : Value
 {
+    private readonly Function _function;
+
+    public FunctionValue(ValueType type, Function function) : base(type)
+    {
+        _function = function;
+    }
+
     public override Function GetValue()
     {
-        return function;
+        return _function;
     }
 
     public override string ToString()
     {
-        return function.ToString();
+        return _function.ToString();
     }
 }

@@ -2,41 +2,50 @@ using Mimble.Exceptions;
 
 namespace Mimble;
 
-public class Scanner(string source)
+public class Scanner
 {
     /*
      * Take source code and produce Tokens on demand
      */
-    
+    private string _source;
     private int _start;
     private int _current;
     private int _lines = 1;
 
+    public Scanner()
+    {
+    }
+
+    public void SetSource(string source)
+    {
+        _source = source;
+    }
+    
     private char Advance()
     {
         _current++;
-        return source[_current - 1];
+        return _source[_current - 1];
     }
 
     private char Peek()
     {
-        return source[_current];
+        return _source[_current];
     }
 
     private char PeekNext()
     {
-        return IsAtEnd() ? '\0' : source[_current + 1];
+        return IsAtEnd() ? '\0' : _source[_current + 1];
     }
 
     private bool IsAtEnd()
     {
-        return _current >= source.Length || _start >= source.Length;
+        return _current >= _source.Length || _start >= _source.Length;
     }
 
     private bool Match(char c)
     {
         if (IsAtEnd()) return false;
-        if (source[_current] != c) return false;
+        if (_source[_current] != c) return false;
 
         Advance();
         return true;
@@ -56,10 +65,10 @@ public class Scanner(string source)
     {
         // Check from _start for rest to see if the keyword matches
         if (_current - _start - offset != rest.Length || 
-            _start + rest.Length + offset > source.Length) 
+            _start + rest.Length + offset > _source.Length) 
             return TokenType.Identifier;
         
-        return rest.Where((t, i) => source[_start + i + offset] != t).Any() ? TokenType.Identifier : type;
+        return rest.Where((t, i) => _source[_start + i + offset] != t).Any() ? TokenType.Identifier : type;
     }
 
     private TokenType CheckTwoKeywords(int offset, string keyword1, string keyword2, TokenType type1, TokenType type2)
@@ -75,7 +84,7 @@ public class Scanner(string source)
     private TokenType IdentifierType()
     {
         // Match the token stored between _start and _current to a TokenType
-        switch (source[_start])
+        switch (_source[_start])
         {
             case 'a': return CheckKeyword(1, "nd", TokenType.And);
             case 'b': return CheckKeyword(1, "reak", TokenType.Break);
@@ -193,7 +202,7 @@ public class Scanner(string source)
             return new Token(TokenType.Eof, _start, "", _lines);
         }
         
-        string value = source.Substring(_start, _current - _start);
+        string value = _source.Substring(_start, _current - _start);
         Token token = new Token(type, _start, value, _lines);
         _start = _current;
         return token;

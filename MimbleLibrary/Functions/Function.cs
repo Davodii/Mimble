@@ -1,8 +1,13 @@
 namespace Mimble.Functions;
 
-public abstract class Function(string identifier)
+public abstract class Function
 {
-    public string identifier { get; } = identifier;
+    protected Function(string identifier)
+    {
+        this.identifier = identifier;
+    }
+
+    public string identifier { get; }
     
     public int arity { get; set; }
 

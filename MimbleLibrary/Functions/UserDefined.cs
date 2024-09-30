@@ -3,19 +3,25 @@ using ValueType = Mimble.Values.ValueType;
 
 namespace Mimble.Functions;
 
-public class UserDefined(string identifier, Chunk chunk) : Function(identifier)
+public class UserDefined : Function
 {
+    private readonly Chunk _chunk;
+
+    public UserDefined(string identifier, Chunk chunk) : base(identifier)
+    {
+        _chunk = chunk;
+    }
 
     public override void PrintCode()
     {
         Console.WriteLine(this.ToString());
-        chunk.PrintChunk();
+        _chunk.PrintChunk();
         Console.WriteLine();
         
         // Print any defined functions
-        for (int i = 0; i < chunk.GetConstantCount(); i++)
+        for (int i = 0; i < _chunk.GetConstantCount(); i++)
         {
-            Value val = chunk.GetConstant(i);
+            Value val = _chunk.GetConstant(i);
 
             if (val.GetValueType() == ValueType.UserDefinedFunction || val.GetValueType() == ValueType.NativeFunction)
             {
@@ -26,6 +32,6 @@ public class UserDefined(string identifier, Chunk chunk) : Function(identifier)
 
     public Chunk GetChunk()
     {
-        return chunk;
+        return _chunk;
     }
 }

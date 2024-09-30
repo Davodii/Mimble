@@ -298,7 +298,7 @@ public class VM
     
     #endregion
     
-    private void Run()
+    private void Execute()
     {
         for (;;)
         {
@@ -531,24 +531,12 @@ public class VM
         }
     }
 
-    public void Interpret(string source)
+    public void Run(UserDefined mainFunction, Environment global)
     {
-        // Compile the source program
-        Compiler compiler = new Compiler();
-        UserDefined mainFunction = compiler.Compile(source);
-        
-        // Create the global environment
-        Environment global = GlobalScope.GetGlobalScope();
-        
         // Initialize the main function frame
         Environment mainEnvironment = new Environment(global);
         _frames.Push(new CallFrame(mainFunction, mainEnvironment));
-        
-        
-        // mainFunction.PrintCode();
 
-        // Begin execution of the code
-        Run();
-        
+        Execute();
     }
 }

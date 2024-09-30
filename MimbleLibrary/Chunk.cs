@@ -7,11 +7,11 @@ namespace Mimble;
 public class Chunk
 {
     // Store the array of bytecode instructions
-    private readonly List<byte> _code = [];
+    private readonly List<byte> _code = new() { };
     
     // Store constant values found within this chunk
     // Also used to get variable identifiers
-    private readonly List<Value> _constants = [];
+    private readonly List<Value> _constants = new() { };
 
     // Store info about the line regarding each index
     private readonly LineNumberTable<int> _lineNumberTable = new();

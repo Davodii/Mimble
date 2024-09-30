@@ -2,13 +2,20 @@ namespace Mimble;
 
 public class LineNumberTable<T> where T : notnull
 {
-    private class Range(int start, int end)
+    private class Range
     {
-        public int End = end;
+        public int End;
+        private readonly int _start;
+
+        public Range(int start, int end)
+        {
+            _start = start;
+            End = end;
+        }
 
         public bool Contains(int i)
         {
-            return start <= i && End >= i;
+            return _start <= i && End >= i;
         }
     }
 

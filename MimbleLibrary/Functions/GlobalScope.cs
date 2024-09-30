@@ -9,38 +9,32 @@ public static class GlobalScope
     // ! create the global environment for the interpreted code
     // ! include things like a functions (e.g. print, len, etc.)
 
-    private static readonly Environment Global;
-
-    static GlobalScope()
+    public static Environment CreateGlobal(GlobalFunctions globals)
     {
-        // Initialize _global
-        Global = new Environment();
+        Environment environment = new();
         
-        // ! create the global scope
-        CreateGlobal();
-    }
+        if (globals.HasFlag(GlobalFunctions.IO))
+        {
+            // ! Print
+            Native print = PrintFn.GetPrintFn();
+            environment.Assign("print", new FunctionValue(ValueType.NativeFunction, print));
+        }
 
-    private static void CreateGlobal()
-    {
-        // ! Print
-        Native print = PrintFn.GetPrintFn();
-        Global.Assign("print", new FunctionValue(ValueType.NativeFunction, print));
-        
-        // ! Length
-        Native length = LengthFn.GetLengthFn();
-        Global.Assign("length", new FunctionValue(ValueType.NativeFunction, length));
-        
-        // ! Append
-        Native append = AppendFn.GetAppendFn();
-        Global.Assign("append", new FunctionValue(ValueType.NativeFunction, append));
-        
-        // ! Pop
-        Native pop = PopFn.GetPopFn();
-        Global.Assign("pop", new FunctionValue(ValueType.NativeFunction, pop));
-    }
+        if (globals.HasFlag(GlobalFunctions.Lists))
+        {
+            // ! Length
+            Native length = LengthFn.GetLengthFn();
+            environment.Assign("length", new FunctionValue(ValueType.NativeFunction, length));
 
-    public static Environment GetGlobalScope()
-    {
-        return Global;
+            // ! Append
+            Native append = AppendFn.GetAppendFn();
+            environment.Assign("append", new FunctionValue(ValueType.NativeFunction, append));
+
+            // ! Pop
+            Native pop = PopFn.GetPopFn();
+            environment.Assign("pop", new FunctionValue(ValueType.NativeFunction, pop));
+        }
+
+        return environment;
     }
 }

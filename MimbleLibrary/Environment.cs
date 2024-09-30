@@ -3,10 +3,15 @@ using Mimble.Values;
 
 namespace Mimble;
 
-public class Environment(Environment enclosing = null!)
+public class Environment
 {
-    private readonly Environment? _enclosing = enclosing;
+    private readonly Environment? _enclosing;
     private readonly Dictionary<string, Value> _locals = new();
+
+    public Environment(Environment enclosing = null!)
+    {
+        _enclosing = enclosing;
+    }
 
     private void Define(string name)
     {
@@ -55,8 +60,13 @@ public class Environment(Environment enclosing = null!)
         return _enclosing != null && _enclosing.Defined(identifier);
     }
 
+    public Dictionary<string, Value> GetLocals()
+    {
+        return _locals;
+    }
     public Environment? GetEnclosing()
     {
         return _enclosing;
     }
+    
 }

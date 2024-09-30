@@ -2,11 +2,11 @@ namespace Mimble;
 
 public static class Program
 {
+    private static Interpreter _interpreter;
+    
     private static void Repl()
     {
         // begin running as if in a REPL
-
-        VM vm = new VM();
         
         for(;;) 
         {
@@ -18,7 +18,7 @@ public static class Program
             if (input[^1] != '\n')
                 input += '\n';
             
-            vm.Interpret(input);
+            _interpreter.Interpret(input);
         }
     }
 
@@ -33,12 +33,13 @@ public static class Program
             source += '\n';
         }
         
-        VM vm = new VM();
-        vm.Interpret(source);
+        _interpreter.Interpret(source);
     }
     
     static void Main(string[] args)
     {
+        _interpreter = new Interpreter();
+        
         if (args.Length == 0)
         {
             Repl();

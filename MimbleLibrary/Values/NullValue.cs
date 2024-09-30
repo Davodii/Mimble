@@ -1,8 +1,12 @@
 namespace Mimble.Values;
 
-public class NullValue() : Value(ValueType.Null)
+public class NullValue : Value
 {
     private static readonly NullValue NNullValue = new();
+
+    private NullValue() : base(ValueType.Null)
+    {
+    }
 
     public static NullValue GetNullValue()
     {
