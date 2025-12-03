@@ -261,7 +261,7 @@ mod tests {
         let toks = lex("hello_world123");
         assert_eq!(toks[0].kind, TokenKind::Identifier);
         assert_eq!(toks[0].span.start, 0);
-        assert_eq!(toks[0].span.end, 15);
+        assert_eq!(toks[0].span.end, 14);
     }
 
     #[test]
