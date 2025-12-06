@@ -2,15 +2,9 @@
 #[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
-    pub span: Span,
+    pub lexeme: String,
     pub line: usize,
     pub column: usize,
-}
-
-#[derive(Debug, Clone)]
-pub struct Span {
-    pub start: usize,   // index of start byte
-    pub end: usize,     // index of end byte
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -24,19 +18,19 @@ pub enum TokenKind {
     Identifier,
 
     // Keywords
-    Do,
-    End,
+    Do,                         // do
+    End,                        // end
 
-    If,
-    Elif,
-    Else,
-    While,
+    If,                         // if
+    Elif,                       // elif
+    Else,                       // else
+    While,                      // while
     // For,
     // Break,
 
-    Or,
-    And,
-    Not,
+    Or,                         // or
+    And,                        // and
+    Not,                        // not
     // In,
     // By, // TODO: Maybe we need this, for range definitons
 
@@ -46,26 +40,26 @@ pub enum TokenKind {
     // Symbols
     // Comma,                  // ,
     // Colon,                  // :
-    LeftParen,              // (
-    RightParen,             // )
+    LeftParen,                  // (
+    RightParen,                 // )
     // LeftSquareBracket,      // [
     // RightSqquareBracket,    // ]
-    // LeftCurlyBracket,       // {
-    // RightCurlyBracket,      // }
+    // LeftCurlyBracket,           // {
+    // RightCurlyBracket,          // }
+        
+    Assign,                     // =
+    Plus,                       // +
+    Minus,                      // -
+    Star,                       // *
+    Slash,                      // /
+    Modulus,                    // %
+    EQ,                         // ==
+    NEQ,                        // !=
+    LT,                         // <
+    LEQ,                        // <=
+    GT,                         // >
+    GEQ,                        // >=
     
-    Assign,                 // =
-    Plus,                   // +
-    Minus,                  // -
-    Star,                   // *
-    Slash,                  // /
-    Modulus,                // %
-    EQ,                     // ==
-    NEQ,                    // !=
-    LT,                     // <
-    LEQ,                    // <=
-    GT,                     // >
-    GEQ,                    // >=
-
-    EOF,                    // eof
-    Error,
-}
+    EOF,                        // eof
+    Error,  
+}   
