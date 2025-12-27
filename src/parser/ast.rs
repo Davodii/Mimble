@@ -1,5 +1,3 @@
-use core::num;
-
 use crate::lexer::{Token, TokenKind};
 
 #[derive(Debug, Clone)]

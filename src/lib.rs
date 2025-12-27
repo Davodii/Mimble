@@ -1,23 +1,26 @@
+use crate::{error::MimbleError, interpreter::RuntimeValue};
+
 // Define all moduless
+pub mod error;
 pub mod lexer;
 pub mod parser;
+pub mod interpreter;
+mod location;
 
-pub fn run(code: &str) -> Result<String, String> {
-    let src = "something";
+pub use location::Location;
 
-    let mut lexer: lexer::Lexer = lexer::Lexer::new(src);
-    let tokens = lexer.lex();
+pub fn run(code: &str) -> Result<RuntimeValue, MimbleError> {
+    let mut lexer: lexer::Lexer = lexer::Lexer::new(code);
+    let tokens = lexer.lex().map_err(MimbleError::Lex)?;
 
     // Parse AST
     let mut parser = parser::Parser::new(tokens);
-    if let Ok(stmts) = parser.parse() {
-        // now have an AST
-        for stmt in stmts {
-            stmt.pretty(0);
-        }
-    }
+    let statements = parser.parse().map_err(MimbleError::Parse)?;
 
-    // Placeholder implementation
-    Ok(format!("Running code:\n{}", code))
 
+    // Interpreter
+    let mut evaluator = interpreter::WalkerEvaluator::new();
+    let result = evaluator.interpret(statements).map_err(MimbleError::Runtime)?;
+
+    Ok(result)
 }

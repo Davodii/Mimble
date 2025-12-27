@@ -4,4 +4,4 @@ mod error;
 
 pub use ast::{Expr, Stmt, LiteralValue};
 pub use parser::Parser;
-pub use error::ParseError;
+pub use error::ParserError;

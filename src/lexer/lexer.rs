@@ -1,5 +1,5 @@
-use crate::lexer::{Token, TokenKind};
-
+use super::{Token, TokenKind};
+use crate::{Location, lexer::LexerError};
 pub struct Lexer<'a> {
     src: &'a str,
     start: usize,
@@ -19,7 +19,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn lex(&mut self) -> Vec<Token> {
+    pub fn lex(&mut self) -> Result<Vec<Token>, LexerError> {
         let mut tokens = Vec::new();
 
         while !self.is_at_end() {
@@ -31,7 +31,7 @@ impl<'a> Lexer<'a> {
 
         tokens.push(self.make(TokenKind::EOF));
         
-        tokens
+        Ok(tokens)
     }
 
     fn scan_token(&mut self) -> Option<Token> {
@@ -96,8 +96,10 @@ impl<'a> Lexer<'a> {
         Token {
             kind,
             lexeme: self.src[self.start..self.current].to_string(),
-            line: self.line,
-            column: self.column,
+            loc: Location{
+                line: self.line,
+                column: self.column,
+            },
         }
     }
 
@@ -139,10 +141,12 @@ impl<'a> Lexer<'a> {
             self.advance();
         }
 
+        let tok = self.make(TokenKind::StringLiteral);
+
         // Consume closing quote
         self.advance();
 
-        self.make(TokenKind::StringLiteral)
+        tok
     } 
 
     fn number(&mut self) -> Token {
@@ -198,7 +202,7 @@ fn is_ident_continue(c: char) -> bool {
 mod tests {
     use super::*;
 
-    fn lex(src: &str) -> Vec<Token> {
+    fn lex(src: &str) -> Result<Vec<Token>, LexerError> {
         let mut lexer = Lexer::new(src);
         lexer.lex()
     }
@@ -209,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_single_char_tokens() {
-        let toks = lex("()+-*/%");
+        let toks = lex("()+-*/%").unwrap();
         assert_eq!(
             kinds(&toks),
             vec![
@@ -227,28 +231,28 @@ mod tests {
 
     #[test]
     fn test_number_literal() {
-        let toks = lex("123");
+        let toks = lex("123").unwrap();
         assert_eq!(toks[0].kind, TokenKind::NumericLiteral);
         assert_eq!(toks[0].lexeme, "123");
     }
 
     #[test]
     fn test_float_literal() {
-        let toks: Vec<Token> = lex("12.34");
+        let toks: Vec<Token> = lex("12.34").unwrap();
         assert_eq!(toks[0].kind, TokenKind::NumericLiteral);
         assert_eq!(toks[0].lexeme, "12.34");
     }
 
     #[test]
     fn test_identifier() {
-        let toks = lex("hello_world123");
+        let toks = lex("hello_world123").unwrap();
         assert_eq!(toks[0].kind, TokenKind::Identifier);
         assert_eq!(toks[0].lexeme, "hello_world123");
     }
 
     #[test]
     fn test_keywords() {
-        let toks = lex("do end if elif else while");
+        let toks = lex("do end if elif else while").unwrap();
         assert_eq!(
             kinds(&toks),
             vec![
@@ -265,13 +269,13 @@ mod tests {
 
     #[test]
     fn test_string_literal() {
-        let toks = lex("\"hello world\"");
+        let toks = lex("\"hello world\"").unwrap();
         assert_eq!(toks[0].kind, TokenKind::StringLiteral);
     }
 
     #[test]
     fn test_comparisons() {
-        let toks = lex("== != <= >= < > = !");
+        let toks = lex("== != <= >= < > = !").unwrap();
         assert_eq!(
             kinds(&toks),
             vec![
@@ -291,7 +295,7 @@ mod tests {
     #[test]
     fn test_lexeme() {
         let mut lexer = Lexer::new("identifier");
-        let toks = lexer.lex();
+        let toks = lexer.lex().unwrap();
         assert_eq!(
             toks[0].lexeme,
             "identifier"

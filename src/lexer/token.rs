@@ -1,10 +1,10 @@
+use crate::Location;
 
 #[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
     pub lexeme: String,
-    pub line: usize,
-    pub column: usize,
+    pub loc: Location,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -1,6 +1,8 @@
 // Lexer for the language
-pub mod token;
-pub mod lexer;
+mod token;
+mod lexer;
+mod error;
 
 pub use token::{Token, TokenKind};
 pub use lexer::Lexer;
+pub use error::LexerError;
