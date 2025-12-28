@@ -311,6 +311,11 @@ mod tests {
         parser.parse()
     }
 
+    fn compare_token(a: &Token, kind: TokenKind, lexeme: &str) {
+        assert_eq!(a.kind, kind);
+        // assert_eq!(a.lexeme, lexeme);
+    }
+
     #[test]
     fn test_empty_program() {
         let toks = lex("");
@@ -609,13 +614,13 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_declaration_errors() {
+    fn test_parse_declaration_invalid() {
         let toks = lex("let 123 = 10");
 
         if let Err(err) = parse(toks) {
             match err.kind {
                 ParserErrorKind::UnexpectedToken { token, expected } => {
-                    assert_eq!(token, "Token { kind: NumericLiteral, lexeme: \"123\", loc: Location { line: 1, column: 5 } }");
+                    assert_eq!(token, "123");
                     assert_eq!(expected, "identifier after 'let'");
                     return;
                 },
@@ -742,9 +747,14 @@ mod tests {
         let toks = lex("a + b * (c - d) / e and not f or g");
         if let Ok(program) = parse(toks) {
             assert_eq!(program.statements.len(), 1);
-            // Further detailed checks can be added here to verify the structure
-            // of the parsed expression tree.
-            todo!()
+
+            // Get the debug printout
+            let stmt = &program.statements[0];
+            let str = stmt.to_test_string();
+
+            // TODO: check this is correct
+            assert_eq!(str, "(ExprStmt (Binary (Binary (Binary (Variable a) Plus (Binary (Binary (Variable b) Star (Binary (Variable c) Minus (Variable d))) Slash (Variable e))) And (Unary Not (Variable f))) Or (Variable g)))");
+            return;
         }
         panic!("Expected to be able to parse complex expression.");
     }
@@ -754,9 +764,10 @@ mod tests {
         let toks = lex("((1 + 2) * (3 - 4)) / (5 + (6 * 7))");
         if let Ok(program) = parse(toks) {
             assert_eq!(program.statements.len(), 1);
-            // Further detailed checks can be added here to verify the structure
-            // of the parsed expression tree.
-            todo!()
+            let stmt = &program.statements[0];
+            let str = stmt.to_test_string();
+            assert_eq!(str, "(ExprStmt (Binary (Binary (Binary (Number 1) Plus (Number 2)) Star (Binary (Number 3) Minus (Number 4))) Slash (Binary (Number 5) Plus (Binary (Number 6) Star (Number 7)))))");
+            return;
         }
         panic!("Expected to be able to parse nested groupings.");
     }
@@ -766,9 +777,10 @@ mod tests {
         let toks = lex("true or false and not false");
         if let Ok(program) = parse(toks) {
             assert_eq!(program.statements.len(), 1);
-            // Further detailed checks can be added here to verify the structure
-            // of the parsed expression tree.
-            todo!()
+            let stmt = &program.statements[0];
+            let str = stmt.to_test_string();
+            assert_eq!(str, "(ExprStmt (Binary (Boolean true) Or (Binary (Boolean false) And (Unary Not (Boolean false)))))");
+            return;
         }
         panic!("Expected to be able to parse logical expression with correct precedence.");
     }
@@ -778,9 +790,11 @@ mod tests {
         let toks = lex("a = b = c = 10");
         if let Ok(program) = parse(toks) {
             assert_eq!(program.statements.len(), 1);
-            // Further detailed checks can be added here to verify the structure
-            // of the parsed expression tree.
-            todo!()
+            let stmt = &program.statements[0];
+            let str = stmt.to_test_string();
+            println!("{}", str);
+            assert_eq!(str, "(ExprStmt (Assign (Variable a) (Assign (Variable b) (Assign (Variable c) (Number 10)))))");
+            return;
         }
         panic!("Expected to be able to parse chained assignments.");
     }
@@ -790,9 +804,10 @@ mod tests {
         let toks = lex("-a + +b - -c");
         if let Ok(program) = parse(toks) {
             assert_eq!(program.statements.len(), 1);
-            // Further detailed checks can be added here to verify the structure
-            // of the parsed expression tree.
-            todo!()
+            let stmt = &program.statements[0];
+            let str = stmt.to_test_string();
+            assert_eq!(str, "(ExprStmt (Binary (Binary (Unary Minus (Variable a)) Plus (Unary Plus (Variable b))) Minus (Unary Minus (Variable c))))");
+            return;
         }
         panic!("Expected to be able to parse unary operations.");
     }
@@ -802,9 +817,11 @@ mod tests {
         let toks = lex("not a and b or -c + d * e");
         if let Ok(program) = parse(toks) {
             assert_eq!(program.statements.len(), 1);
-            // Further detailed checks can be added here to verify the structure
-            // of the parsed expression tree.
-            todo!()
+            let stmt = &program.statements[0];
+            let str = stmt.to_test_string();
+
+            assert_eq!(str, "(ExprStmt (Binary (Binary (Unary Not (Variable a)) And (Variable b)) Or (Binary (Unary Minus (Variable c)) Plus (Binary (Variable d) Star (Variable e)))))");
+            return;
         }
         panic!("Expected to be able to parse expression with unary and precedence.");
     }

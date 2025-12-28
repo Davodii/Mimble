@@ -3,7 +3,6 @@ use super::{LexerError, LexerErrorKind};
 use crate::{Location};
 pub struct Lexer<'a> {
     src: &'a str,
-    start: usize,
     current: usize,
     line: usize,
     column: usize,
@@ -13,7 +12,6 @@ impl<'a> Lexer<'a> {
     pub fn new(src: &'a str) -> Self {
         Self {
             src,
-            start: 0,
             current: 0,
             line: 1,
             column: 1,
@@ -34,18 +32,25 @@ impl<'a> Lexer<'a> {
         let mut tokens = Vec::new();
 
         while !self.is_at_end() {
-            self.start = self.current;
             if let Some(token) = self.scan_token() {
                 tokens.push(token);
             }
         }
 
-        tokens.push(self.make(TokenKind::EOF));
+        tokens.push(self.make_at(TokenKind::EOF, self.current, self.line, self.column));
         
         Ok(tokens)
     }
 
     fn scan_token(&mut self) -> Option<Token> {
+        // Skip whitespace
+        self.skip_whitespace();
+
+        // Capture start
+        let line = self.line;
+        let column = self.column;
+        let start = self.current;
+
         let c = self.advance()?;
 
         let kind = match c {
@@ -78,21 +83,14 @@ impl<'a> Lexer<'a> {
                 else {TokenKind::GT }
             },
 
-            '"' => return Some(self.string()),
+            '"' => return Some(self.string(start, line, column)),
 
             c if c.is_ascii_digit() => {
-                return Some(self.number());
+                return Some(self.number(start, line, column));
             },
 
             c if is_ident_start(c) => {
-                return Some(self.identifier());
-            },
-
-            c if c.is_whitespace() => {
-                if c == '\n' {
-                    self.line += 1;
-                    self.column = 1;
-                } return None
+                return Some(self.identifier(start, line, column));
             },
 
             _ => {
@@ -101,17 +99,31 @@ impl<'a> Lexer<'a> {
             },
         };
 
-        Some(self.make(kind))
+        Some(self.make_at(kind, start, line, column))
     }
 
-    fn make(&self, kind : TokenKind) -> Token {
+    fn make_at(&self, kind : TokenKind, start: usize, line: usize, column: usize) -> Token {
         Token {
             kind,
-            lexeme: self.src[self.start..self.current].to_string(),
+            lexeme: self.src[start..self.current].to_string(),
             loc: Location{
-                line: self.line,
-                column: self.column,
+                line,
+                column,
             },
+        }
+    }
+
+    fn skip_whitespace(&mut self) {
+        while let Some(ch) = self.peek() {
+            if ch.is_whitespace() {
+                if ch == '\n' {
+                    self.line += 1;
+                    self.column = 1;
+                }
+                self.advance();
+            } else {
+                break;
+            }
         }
     }
 
@@ -146,22 +158,23 @@ impl<'a> Lexer<'a> {
     }
 
     // ----- Lexeme Routines -----
-    fn string(&mut self) -> Token {
+    fn string(&mut self, _start: usize, line: usize, column: usize) -> Token {
+        let start_content = self.current;
         while let Some(ch) = self.peek() {
             if ch == '"' { break; }
             if ch == '\n' { self.line += 1; self.column = 1; }
             self.advance();
         }
 
+        let tok = self.make_at(TokenKind::StringLiteral, start_content, line, column);
+
         // Consume closing quote
         self.advance();
-
-        let tok = self.make(TokenKind::StringLiteral);
 
         tok
     } 
 
-    fn number(&mut self) -> Token {
+    fn number(&mut self, start: usize, line: usize, column: usize) -> Token {
         while self.peek().map(|c| c.is_ascii_digit()).unwrap_or(false) {
             self.advance();
         }
@@ -173,15 +186,15 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        self.make(TokenKind::NumericLiteral)
+        self.make_at(TokenKind::NumericLiteral, start, line, column)
     }
 
-    fn identifier(&mut self) -> Token {
+    fn identifier(&mut self, start: usize, line: usize, column: usize) -> Token {
         while self.peek().map(|c| is_ident_continue(c)).unwrap_or(false) {
             self.advance();
         }
 
-        let lexeme = &self.src[self.start..self.current];
+        let lexeme = &self.src[start..self.current];
 
         let kind = match lexeme {
             // Keywords
@@ -212,7 +225,7 @@ impl<'a> Lexer<'a> {
             _ => TokenKind::Identifier,
         };
 
-        self.make(kind)
+        self.make_at(kind, start, line, column)
     }
 
 }
