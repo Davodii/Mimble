@@ -1,5 +1,5 @@
 use super::ast::{Expr, Stmt, LiteralValue};
-use crate::{lexer::{Token, TokenKind}, parser::ParserError};
+use crate::{lexer::{Token, TokenKind}, parser::{ParserError, Program}};
 use crate::Location;
 
 pub struct Parser{
@@ -12,12 +12,12 @@ impl Parser {
         Self { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParserError> {
+    pub fn parse(&mut self) -> Result<Program, ParserError> {
         let mut statements = Vec::new();
         while !self.is_at_end() {
             statements.push(self.statement()?);
         }
-        Ok(statements)
+        Ok(Program { statements })
     }
 
     // ----- Expression Parsing -----
@@ -230,25 +230,30 @@ mod tests {
 
     use super::*;
 
-    fn eof() -> Token {
-        Token {
-            kind: TokenKind::EOF,
-            lexeme: "".to_owned(),
-            loc: Location { line: 0, column: 0},
-        }
+    fn lex(code: &str) -> Vec<Token> {
+        let mut lexer = crate::lexer::Lexer::new(code);
+        lexer.lex().unwrap()
     }
 
-    fn parse(toks: Vec<Token>) -> Result<Vec<Stmt>, ParserError> {
+    // fn eof() -> Token {
+    //     Token {
+    //         kind: TokenKind::EOF,
+    //         lexeme: "".to_owned(),
+    //         loc: Location { line: 0, column: 0},
+    //     }
+    // }
+
+    fn parse(toks: Vec<Token>) -> Result<Program, ParserError> {
         let mut parser = Parser::new(toks);
         parser.parse()
     }
 
     #[test]
     fn test_empty_program() {
-        let toks = vec![eof()];
+        let toks = lex("");
 
         if let Ok(res) = parse(toks) {
-            assert_eq!(res.len(), 0);
+            assert_eq!(res.statements.len(), 0);
         } else {
             panic!("Should parse an empty program (only EOF token).");
         }
@@ -265,18 +270,11 @@ mod tests {
 
     #[test]
     fn test_parse_number_literal() {
-        let toks = vec![
-            Token {
-                kind: TokenKind::NumericLiteral,
-                lexeme: "123".to_string(),
-                loc: Location { line: 0, column: 0},
-            },
-            eof(),
-        ];
+        let toks = lex("123");
 
-        if let Ok(stmts) = parse(toks) {
-            assert_eq!(stmts.len(), 1);
-            if let Stmt::ExprStmt(expr) = &stmts[0] {
+        if let Ok(program) = parse(toks) {
+            assert_eq!(program.statements.len(), 1);
+            if let Stmt::ExprStmt(expr) = &program.statements[0] {
                 if let Expr::Literal(LiteralValue::Number(val)) = expr {
                     assert_eq!(*val, 123.0);
                     return;
@@ -289,18 +287,11 @@ mod tests {
 
     #[test]
     fn test_parse_string_literal() {
-        let toks = vec![
-            Token {
-                kind: TokenKind::StringLiteral,
-                lexeme: "\"hello\"".to_string(),
-                loc: Location { line: 0, column: 0},
-            },
-            eof(),
-        ];
+        let toks = lex("\"hello\"");
 
-        if let Ok(stmts) = parse(toks) {
-            assert_eq!(stmts.len(), 1);
-            if let Stmt::ExprStmt(expr) = &stmts[0] {
+        if let Ok(program) = parse(toks) {
+            assert_eq!(program.statements.len(), 1);
+            if let Stmt::ExprStmt(expr) = &program.statements[0] {
                 if let Expr::Literal(LiteralValue::String(val)) = expr {
                     assert_eq!(val, "hello");
                     return;
@@ -313,18 +304,11 @@ mod tests {
 
     #[test]
     fn test_parse_boolean_literal() {
-        let toks = vec![
-            Token {
-                kind: TokenKind::TrueLiteral,
-                lexeme: "true".to_string(),
-                loc: Location { line: 0, column: 0},
-            },
-            eof(),
-        ];
+        let toks = lex("true");
 
-        if let Ok(stmts) = parse(toks) {
-            assert_eq!(stmts.len(), 1);
-            if let Stmt::ExprStmt(expr) = &stmts[0] {
+        if let Ok(program) = parse(toks) {
+            assert_eq!(program.statements.len(), 1);
+            if let Stmt::ExprStmt(expr) = &program.statements[0] {
                 if let Expr::Literal(LiteralValue::Boolean(val)) = expr {
                     assert_eq!(*val, true);
                     return;
@@ -337,18 +321,11 @@ mod tests {
 
     #[test]
     fn test_parse_identifier() {
-        let toks = vec![
-            Token {
-                kind: TokenKind::Identifier,
-                lexeme: "myVar".to_string(),
-                loc: Location { line: 0, column: 0},
-            },
-            eof(),
-        ];
+        let toks = lex("myVar");
 
-        if let Ok(stmts) = parse(toks) {
-            assert_eq!(stmts.len(), 1);
-            if let Stmt::ExprStmt(expr) = &stmts[0] {
+        if let Ok(program) = parse(toks) {
+            assert_eq!(program.statements.len(), 1);
+            if let Stmt::ExprStmt(expr) = &program.statements[0] {
                 if let Expr::Variable(token) = expr {
                     assert_eq!(token.lexeme, "myVar");
                     return;
@@ -361,28 +338,11 @@ mod tests {
 
     #[test]
     fn test_parse_assignment() {
-        let toks = vec![
-            Token {
-                kind: TokenKind::Identifier,
-                lexeme: "x".to_string(),
-                loc: Location { line: 0, column: 0},
-            },
-            Token {
-                kind: TokenKind::Assign,
-                lexeme: "=".to_string(),
-                loc: Location { line: 0, column: 1},
-            },
-            Token {
-                kind: TokenKind::NumericLiteral,
-                lexeme: "42".to_string(),
-                loc: Location { line: 0, column: 2},
-            },
-            eof(),
-        ];
+        let toks = lex("x = 42");
 
-        if let Ok(stmts) = parse(toks) {
-            assert_eq!(stmts.len(), 1);
-            if let Stmt::ExprStmt(expr) = &stmts[0] {
+        if let Ok(program) = parse(toks) {
+            assert_eq!(program.statements.len(), 1);
+            if let Stmt::ExprStmt(expr) = &program.statements[0] {
                 if let Expr::Assign { name, value } = expr {
                     if let Expr::Variable(var_token) = &**name {
                         assert_eq!(var_token.lexeme, "x");

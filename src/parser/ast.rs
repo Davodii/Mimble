@@ -26,6 +26,11 @@ pub enum LiteralValue {
     // Nil,
 }
 
+#[derive(Debug, Clone)]
+pub struct Program {
+    pub statements: Vec<Stmt>,
+}
+
 impl Expr {
     pub fn pretty(&self, indent: usize) {
         let pad = "  ".repeat(indent);
@@ -114,6 +119,15 @@ impl Stmt {
                     stmt.pretty(indent + 1);
                 }
             }
+        }
+    }
+}
+
+impl Program {
+    pub fn pretty(&self) {
+        println!("Program:");
+        for stmt in &self.statements {
+            stmt.pretty(1);
         }
     }
 }

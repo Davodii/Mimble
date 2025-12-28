@@ -1,11 +1,11 @@
-use crate::parser::Stmt;
+use crate::parser::Program;
 use super::environment::Environment;
 use super::runtime_value::RuntimeValue;
 use super::error::RuntimeError;
 
 pub struct WalkerEvaluator {
     // fields omitted
-    code: Vec<Stmt>,
+    code: Program,
     environment: Environment,
 }
 
@@ -14,7 +14,7 @@ impl WalkerEvaluator {
         todo!()
     }
 
-    pub fn interpret(&mut self, statements: Vec<Stmt>) -> Result<RuntimeValue, RuntimeError> {
+    pub fn interpret(&mut self, program: Program) -> Result<RuntimeValue, RuntimeError> {
         todo!()
     }
 }

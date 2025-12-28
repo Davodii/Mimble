@@ -4,7 +4,7 @@ use super::error::RuntimeError;
 pub struct Environment {
     enclosing: Option<Box<Environment>>,
     values: std::collections::HashMap<String, RuntimeValue>,
-}3
+}
 
 impl Environment {
     pub fn new() -> Self {
