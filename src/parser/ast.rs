@@ -16,6 +16,8 @@ pub enum Stmt {
     If { cond: Expr, then: Box<Stmt>, else_branch: Option<Box<Stmt>> },
     While { cond: Expr, body: Box<Stmt> },
     Block(Vec<Stmt>),
+    VarDeclaration { name: Token, var_type: Option<TokenKind>, initializer: Option<Expr> },
+    // TODO: FuncDeclaration { name: Token, params: Vec<(Token, Option<TokenKind>)>, return_type: Option<TokenKind>, body: Box<Stmt> },
 }
 
 #[derive(Debug, Clone)]
@@ -118,7 +120,20 @@ impl Stmt {
                 for stmt in stmts {
                     stmt.pretty(indent + 1);
                 }
-            }
+            },
+            Self::VarDeclaration { name, var_type, initializer } => {
+                println!("{pad}Var Declaration:");
+                println!("{pad}  Name: {}", name.lexeme);
+                if let Some(vt) = var_type {
+                    println!("{pad}  Type: {:?}", vt);
+                } else {
+                    println!("{pad}  Type: Inferred");
+                }
+                if let Some(init) = initializer {
+                    println!("{pad}  Initializer:");
+                    init.pretty(indent + 2);
+                }
+            },
         }
     }
 }

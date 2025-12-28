@@ -5,4 +5,4 @@ mod error;
 
 pub use token::{Token, TokenKind};
 pub use lexer::Lexer;
-pub use error::LexerError;
+pub use error::{LexerError, LexerErrorKind};

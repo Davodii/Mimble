@@ -1,5 +1,6 @@
 use super::{Token, TokenKind};
-use crate::{Location, lexer::LexerError};
+use super::{LexerError, LexerErrorKind};
+use crate::{Location};
 pub struct Lexer<'a> {
     src: &'a str,
     start: usize,
@@ -16,6 +17,16 @@ impl<'a> Lexer<'a> {
             current: 0,
             line: 1,
             column: 1,
+        }
+    }
+
+    fn error(&self, kind: LexerErrorKind) -> LexerError {
+        LexerError {
+            kind,
+            location: Location {
+                line: self.line,
+                column: self.column,
+            },
         }
     }
 
@@ -46,6 +57,7 @@ impl<'a> Lexer<'a> {
             '*' => TokenKind::Star,
             '/' => TokenKind::Slash,
             '%' => TokenKind::Modulus,
+            ':' => TokenKind::Colon,
             '!' => {
                 if self.matches('=') { TokenKind::NEQ }
                 else { TokenKind::Error }
@@ -141,10 +153,10 @@ impl<'a> Lexer<'a> {
             self.advance();
         }
 
-        let tok = self.make(TokenKind::StringLiteral);
-
         // Consume closing quote
         self.advance();
+
+        let tok = self.make(TokenKind::StringLiteral);
 
         tok
     } 
@@ -172,15 +184,31 @@ impl<'a> Lexer<'a> {
         let lexeme = &self.src[self.start..self.current];
 
         let kind = match lexeme {
+            // Keywords
+            "let" => TokenKind::Let,
             "do" => TokenKind::Do,
             "end" => TokenKind::End,
             "if" => TokenKind::If,
             "elif" => TokenKind::Elif,
             "else" => TokenKind::Else,
             "while" => TokenKind::While,
+
+            // Operators
             "or" => TokenKind::Or,
             "and" => TokenKind::And,
             "not" => TokenKind::Not,
+
+            // Types
+            "int" => TokenKind::Integer,
+            "float" => TokenKind::Float,
+            "bool" => TokenKind::Boolean,
+            "string" => TokenKind::String,
+
+            // Literals
+            "true" => TokenKind::TrueLiteral,
+            "false" => TokenKind::FalseLiteral,
+
+            // Default to identifier
             _ => TokenKind::Identifier,
         };
 
@@ -212,8 +240,8 @@ mod tests {
     }
 
     #[test]
-    fn test_single_char_tokens() {
-        let toks = lex("()+-*/%").unwrap();
+    fn test_lex_single_char_tokens() {
+        let toks = lex("()+-*/%:").unwrap();
         assert_eq!(
             kinds(&toks),
             vec![
@@ -224,35 +252,36 @@ mod tests {
                 TokenKind::Star,
                 TokenKind::Slash,
                 TokenKind::Modulus,
+                TokenKind::Colon,
                 TokenKind::EOF,
             ]
         );
     }
 
     #[test]
-    fn test_number_literal() {
+    fn test_lex_integer_literal() {
         let toks = lex("123").unwrap();
         assert_eq!(toks[0].kind, TokenKind::NumericLiteral);
         assert_eq!(toks[0].lexeme, "123");
     }
 
     #[test]
-    fn test_float_literal() {
+    fn test_lex_float_literal() {
         let toks: Vec<Token> = lex("12.34").unwrap();
         assert_eq!(toks[0].kind, TokenKind::NumericLiteral);
         assert_eq!(toks[0].lexeme, "12.34");
     }
 
     #[test]
-    fn test_identifier() {
+    fn test_lex_identifier() {
         let toks = lex("hello_world123").unwrap();
         assert_eq!(toks[0].kind, TokenKind::Identifier);
         assert_eq!(toks[0].lexeme, "hello_world123");
     }
 
     #[test]
-    fn test_keywords() {
-        let toks = lex("do end if elif else while").unwrap();
+    fn test_lex_keywords() {
+        let toks = lex("do end if elif else while let int float bool string").unwrap();
         assert_eq!(
             kinds(&toks),
             vec![
@@ -262,20 +291,25 @@ mod tests {
                 TokenKind::Elif,
                 TokenKind::Else,
                 TokenKind::While,
+                TokenKind::Let,
+                TokenKind::Integer,
+                TokenKind::Float,
+                TokenKind::Boolean,
+                TokenKind::String,
                 TokenKind::EOF,
             ]
         )
     }
 
     #[test]
-    fn test_string_literal() {
+    fn test_lex_string_literal() {
         let toks = lex("\"hello world\"").unwrap();
         assert_eq!(toks[0].kind, TokenKind::StringLiteral);
     }
 
     #[test]
-    fn test_comparisons() {
-        let toks = lex("== != <= >= < > = !").unwrap();
+    fn test_lex_comparison_operators() {
+        let toks = lex("== != <= >= < > = and or !").unwrap();
         assert_eq!(
             kinds(&toks),
             vec![
@@ -286,6 +320,8 @@ mod tests {
                 TokenKind::LT,
                 TokenKind::GT,
                 TokenKind::Assign,
+                TokenKind::And,
+                TokenKind::Or,
                 TokenKind::Error, // '!' alone is error
                 TokenKind::EOF
             ]
@@ -293,12 +329,86 @@ mod tests {
     }
 
     #[test]
-    fn test_lexeme() {
-        let mut lexer = Lexer::new("identifier");
-        let toks = lexer.lex().unwrap();
+    fn test_lex_whitespace_handling() {
+        let toks = lex("  \n\t  let  \n  x  =  42  ").unwrap();
         assert_eq!(
-            toks[0].lexeme,
-            "identifier"
+            kinds(&toks),
+            vec![
+                TokenKind::Let,
+                TokenKind::Identifier,
+                TokenKind::Assign,
+                TokenKind::NumericLiteral,
+                TokenKind::EOF,
+            ]
         );
+    }
+
+    #[test]
+    fn test_lex_only_whitespace() {
+        let toks = lex("   \n\t  \n ").unwrap();
+        assert_eq!(kinds(&toks), vec![TokenKind::EOF]);
+    }
+
+    #[test]
+    fn test_lex_unterminated_string() {
+        let result = lex("\"unterminated string");
+        assert!(result.is_ok()); // Lexer does not currently handle errors
+        let toks = result.unwrap();
+        assert_eq!(toks[0].kind, TokenKind::StringLiteral);
+    }
+
+    #[test]
+    fn test_lex_unknown_character() {
+        let toks = lex("@").unwrap();
+        assert_eq!(toks[0].kind, TokenKind::Error);
+    }
+
+    #[test]
+    fn test_lex_complex_input() {
+        let src = r#"
+        let x = 42
+        let y = 3.14
+        let name = "Mimble"
+        if x >= 10 and y < 5.0 do
+            print(name)
+        end
+        "#;
+        let toks = lex(src).unwrap();
+        let expected_kinds = vec![
+            TokenKind::Let,
+            TokenKind::Identifier,
+            TokenKind::Assign,
+            TokenKind::NumericLiteral,
+            TokenKind::Let,
+            TokenKind::Identifier,
+            TokenKind::Assign,
+            TokenKind::NumericLiteral,
+            TokenKind::Let,
+            TokenKind::Identifier,
+            TokenKind::Assign,
+            TokenKind::StringLiteral,
+            TokenKind::If,
+            TokenKind::Identifier,
+            TokenKind::GEQ,
+            TokenKind::NumericLiteral,
+            TokenKind::And,
+            TokenKind::Identifier,
+            TokenKind::LT,
+            TokenKind::NumericLiteral,
+            TokenKind::Do,
+            TokenKind::Identifier,
+            TokenKind::LeftParen,
+            TokenKind::Identifier,
+            TokenKind::RightParen,
+            TokenKind::End,
+            TokenKind::EOF,
+        ];
+        assert_eq!(kinds(&toks), expected_kinds);
+    }
+
+    #[test]
+    fn test_lex_empty_input() {
+        let toks = lex("").unwrap();
+        assert_eq!(kinds(&toks), vec![TokenKind::EOF]);
     }
 }

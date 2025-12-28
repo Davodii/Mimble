@@ -10,17 +10,28 @@ pub use location::Location;
 pub use interpreter::RuntimeValue;
 pub use error::MimbleError;
 
-pub fn run(code: &str) -> Result<RuntimeValue, MimbleError> {
+#[derive(Debug)]
+ pub enum GeneralError {
+     Lex(lexer::LexerError),
+     Parse(parser::ParserError),
+     Runtime(interpreter::RuntimeError),
+ }
+
+pub fn run(code: &str) -> Result<RuntimeValue, GeneralError> {
     let mut lexer: lexer::Lexer = lexer::Lexer::new(code);
-    let tokens = lexer.lex().map_err(MimbleError::Lex)?;
+    let tokens = lexer
+        .lex()
+        .map_err(GeneralError::Lex)?;
 
     // Parse AST
     let mut parser = parser::Parser::new(tokens);
-    let statements = parser.parse().map_err(MimbleError::Parse)?;
+    let statements = parser.parse().map_err(GeneralError::Parse)?;
 
-    // Interpreter
+    // Interpreter``
     let mut evaluator = interpreter::WalkerEvaluator::new();
-    let result = evaluator.interpret(statements).map_err(MimbleError::Runtime)?;
+    let result = evaluator
+        .interpret(statements)
+        .map_err(GeneralError::Runtime)?;
 
     Ok(result)
 }

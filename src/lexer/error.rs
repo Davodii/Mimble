@@ -1,19 +1,22 @@
 use crate::Location;
+use crate::error::MimbleError;
 
 #[derive(Debug, Clone)]
-pub enum LexerError {
+pub enum LexerErrorKind {
     InvalidCharacter(char, Location),
     UnterminatedString(Location),
     // Other lexer error variants can be added here
 }
 
-impl std::fmt::Display for LexerError {
+pub type LexerError = MimbleError<LexerErrorKind>;
+
+impl std::fmt::Display for LexerErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LexerError::InvalidCharacter(c, loc) => {
+            LexerErrorKind::InvalidCharacter(c, loc) => {
                 write!(f, "Invalid character '{}' at {}", c, loc)
             }
-            LexerError::UnterminatedString(loc) => {
+            LexerErrorKind::UnterminatedString(loc) => {
                 write!(f, "Unterminated string at {}", loc)
             }
         }

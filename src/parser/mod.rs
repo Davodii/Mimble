@@ -4,4 +4,4 @@ mod error;
 
 pub use ast::{Program};
 pub use parser::Parser;
-pub use error::ParserError;
+pub use error::{ParserError, ParserErrorKind};

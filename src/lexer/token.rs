@@ -9,15 +9,22 @@ pub struct Token {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
-    // Literal types
+    // Literals
     NumericLiteral,
     TrueLiteral,
     FalseLiteral,
     StringLiteral,
 
+
     Identifier,
 
     // Keywords
+    Let,                        // let
+    Integer,                    // int
+    Float,                      // float
+    Boolean,                    // bool
+    String,                     // string
+
     Do,                         // do
     End,                        // end
 
@@ -39,11 +46,11 @@ pub enum TokenKind {
 
     // Symbols
     // Comma,                  // ,
-    // Colon,                  // :
+    Colon,                      // :
     LeftParen,                  // (
     RightParen,                 // )
     // LeftSquareBracket,      // [
-    // RightSqquareBracket,    // ]
+    // RightSquareBracket,     // ]
     // LeftCurlyBracket,           // {
     // RightCurlyBracket,          // }
         

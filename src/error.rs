@@ -1,24 +1,29 @@
-use crate::lexer::LexerError;
-use crate::parser::ParserError;
+use crate::Location;
+use crate::lexer::LexerErrorKind;
+use crate::parser::ParserErrorKind;
 use crate::interpreter::RuntimeError;
 
 #[derive(Debug)]
-pub enum MimbleError {
-    Lex(LexerError),
-    Parse(ParserError),
-    Runtime(RuntimeError),
-    // IO(std::io::Error), // Example of wrapping another error type
+pub struct MimbleError<T> {
+    pub kind: T,
+    pub location: Location,
 }
 
-impl std::fmt::Display for MimbleError {
+impl<T: std::fmt::Debug + 'static> std::fmt::Display for MimbleError<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            MimbleError::Lex(err) => write!(f, "[Lexing Error] {}", err),
-            MimbleError::Parse(err) => write!(f, "[Parsing Error] {}", err),
-            MimbleError::Runtime(err) => write!(f, "[Runtime Error] {}", err),
-            // MimbleError::IO(err) => write!(f, "IO Error: {}", err),
+        match self.kind {
+            _ if std::any::TypeId::of::<T>() == std::any::TypeId::of::<LexerErrorKind>() => {
+                write!(f, "[Lexer error] at {}: {:?}", self.location, self.kind)
+            }
+            _ if std::any::TypeId::of::<T>() == std::any::TypeId::of::<ParserErrorKind>() => {
+                write!(f, "[Parser error] at {}: {:?}", self.location, self.kind)
+            }
+            _ if std::any::TypeId::of::<T>() == std::any::TypeId::of::<RuntimeError>() => {
+                write!(f, "[Runtime error] at {}: {:?}", self.location, self.kind)
+            }
+            _ => write!(f, "Error at {}: {:?}", self.location, self.kind),
         }
     }
 }
 
-impl std::error::Error for MimbleError {}
+impl<T: std::fmt::Debug + 'static> std::error::Error for MimbleError<T> {}
