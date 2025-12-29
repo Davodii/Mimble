@@ -1,6 +1,6 @@
 
 // Define all moduless
-mod error;
+mod diagnostics;
 mod lexer;
 mod parser;
 mod interpreter;
@@ -8,30 +8,45 @@ mod location;
 
 pub use location::Location;
 pub use interpreter::RuntimeValue;
-pub use error::MimbleError;
+pub use diagnostics::DiagnosticsSink;
 
-#[derive(Debug)]
- pub enum GeneralError {
-     Lex(lexer::LexerError),
-     Parse(parser::ParserError),
-     Runtime(interpreter::RuntimeError),
- }
+pub fn run(code: &str) -> Result<RuntimeValue, ()> {
+    // Create Reporter
+    let mut sink = DiagnosticsSink::new();
 
-pub fn run(code: &str) -> Result<RuntimeValue, GeneralError> {
-    let mut lexer: lexer::Lexer = lexer::Lexer::new(code);
-    let tokens = lexer
-        .lex()
-        .map_err(GeneralError::Lex)?;
+    let mut lexer: lexer::Lexer = lexer::Lexer::new(&mut sink, code);
+    let tokens = match lexer.lex() {
+        Ok(tokens) => tokens,
+        Err(_) => {
+            // Lexing error occurred
+            // Print the diagnostics and return
+            sink.emit();
+            return Err(());
+        },
+    };
 
     // Parse AST
-    let mut parser = parser::Parser::new(tokens);
-    let statements = parser.parse().map_err(GeneralError::Parse)?;
+    let mut parser = parser::Parser::new(tokens, &mut sink);
+    let program = match parser.parse() {
+        Ok(program) => program,
+        Err(e) => {
+            // The parser encountered a fatal error
+            // Print the diagnostics and return
+            sink.emit();
+            return Err(());
+        },
+    };
 
-    // Interpreter``
+    // Interpreter
     let mut evaluator = interpreter::WalkerEvaluator::new();
-    let result = evaluator
-        .interpret(statements)
-        .map_err(GeneralError::Runtime)?;
+    let result = evaluator.interpret(program);
 
-    Ok(result)
+    match result {
+        Ok(value) => Ok(value),
+        Err(_) => {
+            // Runtime error occurred
+            sink.emit();
+            return Err(());
+        },
+    }
 }

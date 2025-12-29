@@ -1,16 +1,18 @@
 use super::{Token, TokenKind};
 use super::{LexerError, LexerErrorKind};
 use crate::{Location};
-pub struct Lexer<'a> {
-    src: &'a str,
+pub struct Lexer<'a, 'b> {
+    sink: &'a mut crate::diagnostics::DiagnosticsSink,
+    src: &'b str,
     current: usize,
     line: usize,
     column: usize,
 }
 
-impl<'a> Lexer<'a> {
-    pub fn new(src: &'a str) -> Self {
+impl<'a, 'b> Lexer<'a, 'b> {
+    pub fn new(sink: &'a mut crate::diagnostics::DiagnosticsSink, src: &'b str) -> Self {
         Self {
+            sink,
             src,
             current: 0,
             line: 1,
@@ -18,14 +20,19 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn error(&self, kind: LexerErrorKind) -> LexerError {
-        LexerError {
+    fn error(&mut self, kind: LexerErrorKind) -> LexerError {
+        let err = LexerError {
             kind,
             location: Location {
                 line: self.line,
                 column: self.column,
             },
-        }
+        };
+
+        let diag = err.to_diagnostic();
+        self.sink.report(diag);
+
+        err
     }
 
     pub fn lex(&mut self) -> Result<Vec<Token>, LexerError> {
@@ -244,7 +251,8 @@ mod tests {
     use super::*;
 
     fn lex(src: &str) -> Result<Vec<Token>, LexerError> {
-        let mut lexer = Lexer::new(src);
+        let mut sink = crate::diagnostics::DiagnosticsSink::new();
+        let mut lexer = Lexer::new(&mut sink, src);
         lexer.lex()
     }
 

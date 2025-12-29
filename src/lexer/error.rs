@@ -1,24 +1,36 @@
 use crate::Location;
-use crate::error::MimbleError;
+
+#[derive(Debug, Clone)]
+pub struct LexerError {
+    pub location: Location,
+    pub kind: LexerErrorKind,
+}
 
 #[derive(Debug, Clone)]
 pub enum LexerErrorKind {
-    InvalidCharacter(char, Location),
-    UnterminatedString(Location),
-    // Other lexer error variants can be added here
+    InvalidCharacter { character: char },
+    UnterminatedString,
+    UnexpectedEOF,
 }
 
-pub type LexerError = MimbleError<LexerErrorKind>;
+impl LexerError {
+    pub fn to_diagnostic(&self) -> crate::diagnostics::Diagnostic {
+        let message = match &self.kind {
+            LexerErrorKind::InvalidCharacter { character } => {
+                format!("invalid character '{}'", character)
+            }
+            LexerErrorKind::UnterminatedString => {
+                "unterminated string literal".to_string()
+            }
+            LexerErrorKind::UnexpectedEOF => {
+                "unexpected end of file".to_string()
+            }
+        };
 
-impl std::fmt::Display for LexerErrorKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LexerErrorKind::InvalidCharacter(c, loc) => {
-                write!(f, "Invalid character '{}' at {}", c, loc)
-            }
-            LexerErrorKind::UnterminatedString(loc) => {
-                write!(f, "Unterminated string at {}", loc)
-            }
+        crate::diagnostics::Diagnostic {
+            message,
+            location: self.location,
+            severity: crate::diagnostics::Severity::Error,
         }
     }
 }
