@@ -7,7 +7,7 @@ pub enum Severity {
 
 pub struct Diagnostic {
     pub message: String,
-    pub location: crate::Location,
+    pub span: crate::common::Span,
     pub severity: Severity,
     // TODO: implement using these fields
     // pub help: Option<String>,
@@ -27,21 +27,25 @@ impl DiagnosticsSink {
         }
     }
 
-    pub fn report(&mut self, diag: Diagnostic) {
-        if let Severity::Error = diag.severity {
+    pub fn report(&mut self, span: crate::common::Span, msg: impl Into<String>, severity: Severity) {
+        if let Severity::Error = severity {
             self.has_errors = true;
         }
 
         // Add diagnostic to the list
-        self.diagnostics.push(diag);
+        self.diagnostics.push(Diagnostic {
+            message: msg.into(),
+            span,
+            severity,
+        });
     }
 
-    pub fn emit(&self) {
+    pub fn emit_all(&self) {
         for diag in &self.diagnostics {
             // In the future use a crate like 'miette' or 'codespan-reporting' for better error reporting
             eprintln!("[{}:{}] {:?}: {}",
-                diag.location.line,
-                diag.location.column,
+                diag.span.line,
+                diag.span.column,
                 diag.severity,
                 diag.message
             );
@@ -51,6 +55,12 @@ impl DiagnosticsSink {
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
     }
+
+    // pub fn format_diagnostic(&self, diag: &Diagnostic, source: &str) -> String {
+    //     let line_num = source[..diag.span.start].lines().count();
+    //     let line_text = source.lines().nth(line_num - 1).unwrap_or("");
+    //     format!("Error on line {}:\n  {}\n  ^--- {}", line_num, line_text, diag.message)
+    // }
 
     pub fn has_errors(&self) -> bool {
         self.has_errors

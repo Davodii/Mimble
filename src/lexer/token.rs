@@ -1,59 +1,27 @@
-use crate::Location;
 
 #[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
-    pub lexeme: String,
-    pub loc: Location,
+    pub span: crate::common::Span,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
-    // Literals
-    NumericLiteral,
-    TrueLiteral,
-    FalseLiteral,
-    StringLiteral,
-
-
-    Identifier,
-
     // Keywords
-    Let,                        // let
-    Integer,                    // int
-    Float,                      // float
-    Boolean,                    // bool
-    String,                     // string
-
-    Do,                         // do
-    End,                        // end
-
-    If,                         // if
-    Elif,                       // elif
-    Else,                       // else
-    While,                      // while
-    // For,
-    // Break,
-
+    Let, Integer, Float, Boolean, String, Do, End, 
+    If, Elif, Else, While, For, Break, Continue,
+    In, By, Func, Return,
     Or,                         // or
     And,                        // and
     Not,                        // not
-    // In,
-    // By, // TODO: Maybe we need this, for range definitons
-
-    // Func,
-    // Return,
 
     // Symbols
-    // Comma,                  // ,
-    Colon,                      // :
-    LeftParen,                  // (
-    RightParen,                 // )
+    Comma, Colon, LeftParen, RightParen,
     // LeftSquareBracket,      // [
     // RightSquareBracket,     // ]
     // LeftCurlyBracket,           // {
     // RightCurlyBracket,          // }
-        
+    
     Assign,                     // =
     Plus,                       // +
     Minus,                      // -
@@ -66,7 +34,14 @@ pub enum TokenKind {
     LEQ,                        // <=
     GT,                         // >
     GEQ,                        // >=
-    
     EOF,                        // eof
+
+    // Literals
+    NumericLiteral(f64),
+    True,
+    False,
+    StringLiteral(crate::common::Symbol),
+    Identifier(crate::common::Symbol),
+    
     Error,  
 }   

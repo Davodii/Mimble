@@ -1,11 +1,11 @@
-use crate::Location;
+use crate::common::Span;
 
 #[derive(Debug, Clone)]
 pub enum RuntimeError {
     DivisionByZero(),
     UndefinedVariable(String),
     TypeMismatch{expected: String, found: String},
-    VariableAlreadyDeclared { var_name: String, def_loc: Location },
+    VariableAlreadyDeclared { var_name: String, def_loc: Span },
     // Other runtime error variants can be added here
 }
 

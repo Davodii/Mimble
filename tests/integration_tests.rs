@@ -2,7 +2,8 @@ use mimble;
 use mimble::RuntimeValue; 
 
 fn eval(source: &str) -> RuntimeValue {
-    mimble::run(source).expect("Execution failed")
+    let mut sink = mimble::DiagnosticsSink::new();
+    mimble::run(source, &mut sink).expect("Execution failed")
 }
 
 #[test]

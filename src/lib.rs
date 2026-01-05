@@ -1,52 +1,40 @@
 
-// Define all moduless
-mod diagnostics;
+// Define all modules
+mod common;
 mod lexer;
 mod parser;
 mod interpreter;
-mod location;
 
-pub use location::Location;
+use common::StringPool;
+
+
+pub use common::DiagnosticsSink;
 pub use interpreter::RuntimeValue;
-pub use diagnostics::DiagnosticsSink;
 
-pub fn run(code: &str) -> Result<RuntimeValue, ()> {
-    // Create Reporter
-    let mut sink = DiagnosticsSink::new();
 
-    let mut lexer: lexer::Lexer = lexer::Lexer::new(&mut sink, code);
-    let tokens = match lexer.lex() {
-        Ok(tokens) => tokens,
-        Err(_) => {
-            // Lexing error occurred
-            // Print the diagnostics and return
-            sink.emit();
-            return Err(());
-        },
-    };
+pub fn run(code: &str, mut sink: &mut DiagnosticsSink) -> Result<RuntimeValue, ()> {
+    // Create the string pool
+    let mut pool = StringPool::new();
+
+    let mut lexer: lexer::Lexer = lexer::Lexer::new(code, &mut pool, &mut sink );
+    let tokens = lexer.lex();
 
     // Parse AST
-    let mut parser = parser::Parser::new(tokens, &mut sink);
-    let program = match parser.parse() {
-        Ok(program) => program,
-        Err(e) => {
-            // The parser encountered a fatal error
-            // Print the diagnostics and return
-            sink.emit();
-            return Err(());
-        },
-    };
+    let mut parser = parser::Parser::new(tokens, &mut pool, &mut sink);
+    let ast = parser.parse();
+
+    // TODO: perform semantic analysis here
+
+    if sink.has_errors() {
+        return Err(());
+    }
 
     // Interpreter
-    let mut evaluator = interpreter::WalkerEvaluator::new();
-    let result = evaluator.interpret(program);
+    let mut evaluator = interpreter::WalkerEvaluator::new(&mut pool, &mut sink);
+    let result = evaluator.interpret(ast);
 
     match result {
         Ok(value) => Ok(value),
-        Err(_) => {
-            // Runtime error occurred
-            sink.emit();
-            return Err(());
-        },
+        Err(_) => return Err(()),
     }
 }

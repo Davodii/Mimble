@@ -1,43 +1,54 @@
-use crate::parser::Program;
 use super::environment::Environment;
 use super::runtime_value::RuntimeValue;
 use super::error::RuntimeError;
+use crate::parser::{Stmt, StmtKind, Expr, ExprKind, LiteralValue};
 
-pub struct WalkerEvaluator {
+use crate::common::{DiagnosticsSink, Span, Symbol, StringPool};
+use crate::lexer::TokenKind;
+
+pub struct WalkerEvaluator<'a> {
     // fields omitted
     environment: Environment,
+    pool: &'a mut StringPool,
+    sink: &'a mut DiagnosticsSink,
 }
 
-impl WalkerEvaluator {
-    pub fn new() -> Self {
+impl<'a> WalkerEvaluator<'a> {
+    pub fn new(pool: &'a mut StringPool, sink: &'a mut DiagnosticsSink) -> Self {
         Self {
             environment: Environment::new(),
+            pool,
+            sink,
         }
     }
 
-    pub fn interpret(&mut self, code: Program) -> Result<RuntimeValue, RuntimeError> {
+    pub fn interpret(&mut self, code: Vec<Stmt>) -> Result<RuntimeValue, RuntimeError> {
         let mut value = RuntimeValue::Nil;
         
-        for stmt in code.statements {
+        for stmt in code {
             value = self.execute_statement(&stmt)?;
         }
 
         Ok(value)
     }
 
-    fn execute_statement(&mut self, stmt: &crate::parser::Stmt) -> Result<RuntimeValue, RuntimeError> {
+    fn execute_statement(&mut self, stmt: &Stmt) -> Result<RuntimeValue, RuntimeError> {
         match stmt {
-            crate::parser::Stmt::ExprStmt(expr) => {
+            Stmt{node: StmtKind::ExprStmt(expr), span:_} => {
                 self.evaluate_expression(&expr)
             },
-            crate::parser::Stmt::VarDeclaration { name, var_type, initializer } => {
+            Stmt{node: StmtKind::VarDeclaration { name, var_type: _, initializer }, span:_} => {
                 let value = if let Some(init_expr) = initializer {
                     self.evaluate_expression(init_expr)?
                 } else {
                     RuntimeValue::Nil
                 };
 
-                self.environment.assign(&name.lexeme, value.clone());
+                let TokenKind::Identifier(ref sym) = name.kind else {
+                    return Err(RuntimeError::TypeMismatch { expected: "identifier".to_string(), found: "other".to_string() });
+                };
+
+                self.environment.assign(sym, value.clone());
                 Ok(value)
             }
             _ => todo!(),
@@ -46,70 +57,74 @@ impl WalkerEvaluator {
 
     fn evaluate_expression(&mut self, expr: &crate::parser::Expr) -> Result<RuntimeValue, RuntimeError> {
         match expr {
-            crate::parser::Expr::Literal(lit) => {
+            Expr{node: ExprKind::Literal(lit), span: _} => {
                 match lit {
-                    crate::parser::LiteralValue::Number(n) => Ok(RuntimeValue::Number(*n)),
-                    crate::parser::LiteralValue::String(s) => Ok(RuntimeValue::String(s.clone())),
-                    crate::parser::LiteralValue::Boolean(b) => Ok(RuntimeValue::Boolean(*b)),
-                    crate::parser::LiteralValue::Nil => Ok(RuntimeValue::Nil),
-                    crate::parser::LiteralValue::Error => todo!(),
+                    LiteralValue::Number(n) => Ok(RuntimeValue::Number(*n)),
+                    LiteralValue::String(s) => {
+                        // TODO: optimize string handling by defering to_string() until necessary (use Symbols internally)
+                        let string_value = self.pool.resolve(*s).to_string();
+                        Ok(RuntimeValue::String(string_value))
+                    },
+                    LiteralValue::Boolean(b) => Ok(RuntimeValue::Boolean(*b)),
+                    LiteralValue::Nil => Ok(RuntimeValue::Nil),
+                    LiteralValue::Error => todo!(),
                 }
             },
-            crate::parser::Expr::Binary { left, op, right } => {
+            Expr{node: ExprKind::Binary { left, op, right }, span: _} => {
                 // Evaluate the left and right expressions
                 let left_val = self.evaluate_expression(left)?;
                 let right_val = self.evaluate_expression(right)?;
 
                 match op {
-                    crate::lexer::TokenKind::Plus => left_val.add(&right_val),
-                    crate::lexer::TokenKind::Minus => left_val.subtract(&right_val),
-                    crate::lexer::TokenKind::Star => left_val.multiply(&right_val),
-                    crate::lexer::TokenKind::Slash => left_val.divide(&right_val),
-                    crate::lexer::TokenKind::Modulus => left_val.modulus(&right_val),
-                    crate::lexer::TokenKind::And => left_val.and(&right_val),
-                    crate::lexer::TokenKind::Or => left_val.or(&right_val),
-                    crate::lexer::TokenKind::EQ => left_val.equals(&right_val),
-                    crate::lexer::TokenKind::NEQ => left_val.not_equals(&right_val),
-                    crate::lexer::TokenKind::LT => left_val.less_than(&right_val),
-                    crate::lexer::TokenKind::LEQ => left_val.less_than_equal(&right_val),
-                    crate::lexer::TokenKind::GT => left_val.greater_than(&right_val),
-                    crate::lexer::TokenKind::GEQ => left_val.greater_than_equal(&right_val),
+                    TokenKind::Plus => left_val.add(&right_val),
+                    TokenKind::Minus => left_val.subtract(&right_val),
+                    TokenKind::Star => left_val.multiply(&right_val),
+                    TokenKind::Slash => left_val.divide(&right_val),
+                    TokenKind::Modulus => left_val.modulus(&right_val),
+                    TokenKind::And => left_val.and(&right_val),
+                    TokenKind::Or => left_val.or(&right_val),
+                    TokenKind::EQ => left_val.equals(&right_val),
+                    TokenKind::NEQ => left_val.not_equals(&right_val),
+                    TokenKind::LT => left_val.less_than(&right_val),
+                    TokenKind::LEQ => left_val.less_than_equal(&right_val),
+                    TokenKind::GT => left_val.greater_than(&right_val),
+                    TokenKind::GEQ => left_val.greater_than_equal(&right_val),
                     _ => Err(RuntimeError::TypeMismatch { expected: "TODO".to_string(), found: "other".to_string() }),
                 }
             },
-            crate::parser::Expr::Unary { op, expr } => {
+            Expr{node: ExprKind::Unary { op, expr }, span: _} => {
                 let value = self.evaluate_expression(expr)?;
                 match op {
-                    crate::lexer::TokenKind::Minus => value.negate(),
-                    crate::lexer::TokenKind::Not => value.not(),
+                    TokenKind::Minus => value.negate(),
+                    TokenKind::Not => value.not(),
                     _ => Err(RuntimeError::TypeMismatch { expected: "TODO".to_string(), found: "other".to_string() }),
                 }
             },
-            crate::parser::Expr::Identifier(token) => {
-                let name = &token.lexeme;
+            Expr{node: ExprKind::Identifier(name), span: _} => {
                 if let Some(value) = self.environment.get(name) {
                     Ok(value)
                 } else {
-                    Err(RuntimeError::UndefinedVariable(name.clone()))
+                    todo!("Undefined variable error handling")
+                    // Err(RuntimeError::UndefinedVariable(name.clone()))
                 }
             },
-            crate::parser::Expr::Assign { name, value } => {
+            Expr{node: ExprKind::Assign { name: name_expr, value }, span: _} => {
                 let val = self.evaluate_expression(value)?;
 
                 // Convert name into an identifier
-                let var_name = if let crate::parser::Expr::Identifier(token) = &**name {
-                    &token.lexeme
+                let var_name = if let Expr{node: ExprKind::Identifier(symbol), span: _} = &**name_expr {
+                    symbol
                 } else {
-                    return Err(RuntimeError::TypeMismatch { expected: "identifier".to_string(), found: "other".to_string() });
+                    todo!("Assignment to non-identifier error handling")
                 };
 
                 if self.environment.assign(var_name, val.clone()) {
                     Ok(val)
                 } else {
-                    Err(RuntimeError::UndefinedVariable(var_name.clone()))
+                    todo!("Undefined variable error handling on assignment")
                 }
             },
-            crate::parser::Expr::Error => todo!(),
+            _ => todo!(),
         }
     }
 }

@@ -1,6 +1,9 @@
 use mimble::run;
 
 fn main() {
+    // Create the sink
+    let mut sink = mimble::DiagnosticsSink::new();
+
     // Start REPL
     println!("Welcome to the Mimble REPL!");
     use std::io::{self, Write};
@@ -15,10 +18,11 @@ fn main() {
             break;
         }
 
-        match run(&input) {
+        match run(&input, &mut sink) {
             Ok(value) => println!("=> {}", value),
             Err(_) => {
                 println!("An error occurred during execution.");
+                sink.emit_all();
             },
         }
     }

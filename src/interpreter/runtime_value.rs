@@ -3,6 +3,7 @@ use crate::interpreter::RuntimeError;
 #[derive(Debug, Clone, PartialEq)]
 pub enum RuntimeValue {
     Number(f64),
+    // TODO: maybe differentiate between static strings and dynamic strings
     String(String),
     Boolean(bool),
     Nil,
