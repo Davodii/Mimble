@@ -1,8 +1,6 @@
-use mimble::run;
-
 fn main() {
-    // Create the sink
-    let mut sink = mimble::DiagnosticsSink::new();
+    // Create the interpreter
+    let mut interpreter = mimble::Interpreter::new();
 
     // Start REPL
     println!("Welcome to the Mimble REPL!");
@@ -18,11 +16,15 @@ fn main() {
             break;
         }
 
-        match run(&input, &mut sink) {
+        let val = interpreter.run(&input);
+
+        match val {
             Ok(value) => println!("=> {}", value),
             Err(_) => {
                 println!("An error occurred during execution.");
-                sink.emit_all();
+                interpreter.emit_diagnostics(&input);
+
+                interpreter.clear_diagnostics();
             },
         }
     }

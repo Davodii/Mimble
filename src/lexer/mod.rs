@@ -77,7 +77,9 @@ impl<'a> Lexer<'a> {
         let kind = match c {
             '(' => TokenKind::LeftParen,
             ')' => TokenKind::RightParen,
-            // ',' => TokenKind::Comma,
+            ',' => TokenKind::Comma,
+            '[' => TokenKind::LeftSquareBracket,
+            ']' => TokenKind::RightSquareBracket,
             '+' => TokenKind::Plus,
             '-' => TokenKind::Minus,
             '*' => TokenKind::Star,
@@ -218,10 +220,22 @@ impl<'a> Lexer<'a> {
 
         // Get the value
         let lexeme = &self.src[start..self.current];
-        let value: f64 = lexeme.parse().unwrap_or(0.0);
+
+        if lexeme.contains('.') {
+            let value: f64 = lexeme.parse().unwrap_or(0.0);
+
+            return self.make_at(
+                TokenKind::FloatLiteral(value), 
+                start, 
+                line, 
+                column
+            );
+        }
+
+        let value: i64 = lexeme.parse().unwrap_or(0);
 
         self.make_at(
-            TokenKind::NumericLiteral(value), 
+            TokenKind::IntegerLiteral(value), 
             start, 
             line, 
             column
@@ -318,20 +332,20 @@ mod tests {
     #[test]
     fn test_lex_integer_literal() {
         let toks = lex("123");
-        if let TokenKind::NumericLiteral(v) = toks[0].kind {
-            assert_eq!(v, 123.0);
+        if let TokenKind::IntegerLiteral(v) = toks[0].kind {
+            assert_eq!(v, 123);
         } else {
-            panic!("Expected NumericLiteral token");
+            panic!("Expected IntegerLiteral token");
         }
     }
 
     #[test]
     fn test_lex_float_literal() {
         let toks: Vec<Token> = lex("12.34");
-        if let TokenKind::NumericLiteral(v) = toks[0].kind {
+        if let TokenKind::FloatLiteral(v) = toks[0].kind {
             assert_eq!(v, 12.34);
         } else {
-            panic!("Expected NumericLiteral token");
+            panic!("Expected FloatLiteral token");
         }
     }
 
@@ -418,7 +432,7 @@ mod tests {
                 TokenKind::Let,
                 TokenKind::Identifier(pool.intern("x")),
                 TokenKind::Assign,
-                TokenKind::NumericLiteral(42.0),
+                TokenKind::IntegerLiteral(42),
                 TokenKind::EOF,
             ]
         );
@@ -469,11 +483,11 @@ mod tests {
             TokenKind::Let,
             TokenKind::Identifier(pool.intern("x")),
             TokenKind::Assign,
-            TokenKind::NumericLiteral(42.0),
+            TokenKind::IntegerLiteral(42),
             TokenKind::Let,
             TokenKind::Identifier(pool.intern("y")),
             TokenKind::Assign,
-            TokenKind::NumericLiteral(3.14),
+            TokenKind::FloatLiteral(3.14),
             TokenKind::Let,
             TokenKind::Identifier(pool.intern("name")),
             TokenKind::Assign,
@@ -481,11 +495,11 @@ mod tests {
             TokenKind::If,
             TokenKind::Identifier(pool.intern("x")),
             TokenKind::GEQ,
-            TokenKind::NumericLiteral(10.0),
+            TokenKind::IntegerLiteral(10),
             TokenKind::And,
             TokenKind::Identifier(pool.intern("y")),
             TokenKind::LT,
-            TokenKind::NumericLiteral(5.0),
+            TokenKind::FloatLiteral(5.0),
             TokenKind::Do,
             TokenKind::Identifier(pool.intern("print")),
             TokenKind::LeftParen,

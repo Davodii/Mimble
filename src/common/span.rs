@@ -8,6 +8,12 @@ pub struct Span {
     pub column: usize,
 }
 
+#[derive(Debug, Clone)]
+pub struct Spanned<T> {
+    pub node: T,
+    pub span: crate::common::Span,
+}
+
 impl Span {
     pub fn merge(&self, other: Span) -> Span {
         Span {

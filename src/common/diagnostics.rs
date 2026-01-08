@@ -40,15 +40,11 @@ impl DiagnosticsSink {
         });
     }
 
-    pub fn emit_all(&self) {
+    pub fn emit_all(&self, source: &str) {
         for diag in &self.diagnostics {
             // In the future use a crate like 'miette' or 'codespan-reporting' for better error reporting
-            eprintln!("[{}:{}] {:?}: {}",
-                diag.span.line,
-                diag.span.column,
-                diag.severity,
-                diag.message
-            );
+            
+            eprintln!("{}", self.format_diagnostic(diag, source));
         }
     }
 
@@ -56,11 +52,23 @@ impl DiagnosticsSink {
         &self.diagnostics
     }
 
-    // pub fn format_diagnostic(&self, diag: &Diagnostic, source: &str) -> String {
-    //     let line_num = source[..diag.span.start].lines().count();
-    //     let line_text = source.lines().nth(line_num - 1).unwrap_or("");
-    //     format!("Error on line {}:\n  {}\n  ^--- {}", line_num, line_text, diag.message)
-    // }
+    pub fn format_diagnostic(&self, diag: &Diagnostic, source: &str) -> String {
+        let line_num = source[..diag.span.start].lines().count();
+        let line_text = source.lines().nth(line_num - 1).unwrap_or("");
+
+        let col = diag.span.column.saturating_sub(1);
+
+        // Create the "pointer" line
+        let padding = " ".repeat(col);
+
+        format!(
+            "Error on line {line_num}\n {line_text}\n {padding}^--- {msg}",
+            line_num = line_num,
+            line_text = line_text,
+            padding = padding,
+            msg = diag.message,
+        )
+    }
 
     pub fn has_errors(&self) -> bool {
         self.has_errors
