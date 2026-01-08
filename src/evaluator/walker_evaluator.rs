@@ -1,6 +1,6 @@
 use super::environment::Environment;
 use super::runtime_value::RuntimeValue;
-use crate::parser::{Stmt, StmtKind, Expr, ExprKind, LiteralValue};
+use crate::parser::{Stmt, StmtKind, Expr, ExprKind};
 
 use crate::common::{DiagnosticsSink, Span, StringPool, Symbol};
 use crate::lexer::TokenKind;
@@ -54,7 +54,7 @@ impl<'a> WalkerEvaluator<'a> {
         match stmt {
             Stmt{
                 node: StmtKind::ExprStmt(expr), 
-                span
+                span: _
             } => {
                 self.evaluate_expression(&expr)
             },
@@ -66,7 +66,6 @@ impl<'a> WalkerEvaluator<'a> {
                 }, 
                 span: _
             } => self.execute_let_statement(name, type_annotation, initializer),
-            Stmt{node: _, span} => Err(self.error(*span, "Unsupported statement")),
         }
     }
 
@@ -229,7 +228,6 @@ impl<'a> WalkerEvaluator<'a> {
                     todo!("Invalid assignment target error handling")
                 }
             },
-            _ => todo!(),
         }
     }
 

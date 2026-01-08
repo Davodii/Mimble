@@ -1,5 +1,5 @@
 use crate::common::span::Spanned;
-use crate::lexer::{Token, TokenKind};
+use crate::lexer::TokenKind;
 use crate::common::{Symbol, Type};
 
 // Spanned type aliases for expressions, statements, and literals
@@ -56,10 +56,10 @@ pub enum LiteralValue {
 #[derive(Debug, Clone)]
 pub enum StmtKind {
     ExprStmt(Box<Expr>),
-    PrintStmt(Box<Expr>),
-    If { cond: Box<Expr>, then: Box<Stmt>, else_branch: Option<Box<Stmt>> },
-    While { cond: Box<Expr>, body: Box<Stmt> },
-    Block(Vec<Stmt>),
+    // PrintStmt(Box<Expr>),
+    // If { cond: Box<Expr>, then: Box<Stmt>, else_branch: Option<Box<Stmt>> },
+    // While { cond: Box<Expr>, body: Box<Stmt> },
+    // Block(Vec<Stmt>),
     LetStmt { 
         name: Symbol, 
         type_annotation: Option<Type>, 

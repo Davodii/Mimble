@@ -384,7 +384,7 @@ impl<'a> Parser<'a> {
 
     fn declaration(&mut self) -> Result<Stmt, ()> {
         let name_token = self.consume_identifier("Expected an identifier after 'let'")?;
-        let mut span = name_token.span;
+        let span = name_token.span;
 
         // Check if we have an optional type annotation
         let type_annotation = if self.matches(TokenKind::Colon) {
