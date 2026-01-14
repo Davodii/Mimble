@@ -6,7 +6,7 @@ use crate::parser::{Stmt, StmtKind, Expr, ExprKind};
 
 use crate::common::{DiagnosticsSink, Span, StringPool, Symbol};
 use crate::lexer::TokenKind;
-use crate::tracer::TraceEvent;
+use crate::tracer::{TraceEvent, Tracer};
 
 #[derive(Copy, Clone)]
 enum BinOpKind {
@@ -138,21 +138,26 @@ fn eval_binop(op: TokenKind, lhs: Value, rhs: Value) -> Result<Value, ()> {
         _ => Err(()),
     }
 }
-pub struct WalkerEvaluator<'a> {
+pub struct WalkerEvaluator<'a, T: Tracer> {
     // fields omitted
     environment: &'a mut Environment,
     pool: &'a mut StringPool,
     sink: &'a mut DiagnosticsSink,
-
+    tracer: T,  // generic tracer
     next_uid: usize,
 }
-
-impl<'a> WalkerEvaluator<'a> {
-    pub fn new(env: &'a mut Environment, pool: &'a mut StringPool, sink: &'a mut DiagnosticsSink) -> Self {
+impl<'a, T: Tracer> WalkerEvaluator<'a, T> {
+    pub fn new(
+        env: &'a mut Environment, 
+        pool: &'a mut StringPool, 
+        sink: &'a mut DiagnosticsSink,
+        tracer: T,
+    ) -> Self {
         Self {
             environment: env,
             pool,
             sink,
+            tracer,
             next_uid: 0,
         }
     }
@@ -177,6 +182,10 @@ impl<'a> WalkerEvaluator<'a> {
         let id = self.next_uid;
         self.next_uid += 1;
         id
+    }
+
+    fn emit(&mut self, event: TraceEvent) {
+        self.tracer.trace(event);
     }
 
     fn error(&mut self, span: Span, message: impl Into<String>){
@@ -320,14 +329,14 @@ impl<'a> WalkerEvaluator<'a> {
         // Define the destination identity
         let destination = DataSource::Variable(*name);
 
-        // TODO: Emit init event
+        // Emit init event
         // Even though it is a new variable, we show the data moving
         // FROM its source INTO its new home
-        // self.emit(TraceEvent::Assign {
-        //     from: value.source.clone(),
-        //     to: destination.clone(),
-        //     value: value.value.clone(),
-        // });
+        self.emit(TraceEvent::Assign {
+            from: value.source.clone(),
+            to: destination.clone(),
+            value: value.value.clone(),
+        });
 
         // Update the source of the value to be the variable itself
         let tracked_for_env = TrackedValue {
@@ -351,12 +360,12 @@ impl<'a> WalkerEvaluator<'a> {
         // Define the destination
         let destination = DataSource::Variable(*name);
 
-        // TODO: Emit the trace event
-        // self.emit(TraceEvent::Assing {
-        //     from: val.source.clone(),
-        //     to: destination.clone(),
-        //     value: val.value.clone(),
-        // });
+        // Emit the trace event
+        self.emit(TraceEvent::Assign {
+            from: val.source.clone(),
+            to: destination.clone(),
+            value: val.value.clone(),
+        });
 
         // Since the value now lives in the variable, we update its source
         // so that the next time it is moved, it reports this variable as its origin
@@ -486,12 +495,12 @@ impl<'a> WalkerEvaluator<'a> {
             // We know the destination (ArraySlot {id: array_id, index: idx})
             let target_source = DataSource::ArraySlot { id: *array_id, index: idx };
 
-            // TODO: implement the trait!!!
-            // self.emit(TraceEvent::Assign { 
-            //     from: value.source.clone(), 
-            //     to: target_source.clone(), 
-            //     value: value.value.clone() 
-            // });
+            // implement the trait!!!
+            self.emit(TraceEvent::Assign { 
+                from: value.source.clone(), 
+                to: target_source.clone(), 
+                value: value.value.clone() 
+            });
 
             // Internal state update
             // We update the elements. Note that the value stored in the array

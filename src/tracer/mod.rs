@@ -24,17 +24,26 @@ pub enum TraceEvent {
         result: bool,
     }
 }
+
 pub trait Tracer {
     fn trace(&mut self, event: TraceEvent);
 }
 
 /// A dummy tracer useful for testing.
-#[derive(Debug, Clone, Copy)]
-pub struct DummyTracer {}
+pub struct DummyTracer;
 
 impl Tracer for DummyTracer {
     fn trace(&mut self, _event: TraceEvent) {
         // Do northing
+    }
+}
+
+/// A tracer that prints trace events to the console.
+pub struct ConsoleTracer;
+
+impl Tracer for ConsoleTracer {
+    fn trace(&mut self, event: TraceEvent) {
+        println!("[TRACE]: {:?}", event);
     }
 }
 

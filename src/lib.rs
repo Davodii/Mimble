@@ -47,7 +47,8 @@ impl Interpreter {
         let mut evaluator = evaluator::WalkerEvaluator::new(
             &mut self.globals, 
             &mut self.pool, 
-            &mut self.sink
+            &mut self.sink,
+            tracer::ConsoleTracer {}, // Use a simple console tracer
         );
         let result = evaluator.interpret(ast);
 

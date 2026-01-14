@@ -1,0 +1,5 @@
+let unsorted = [1,5,3,7]
+
+let temp = unsorted[0]
+unsorted[0] = unsorted[1]
+unsorted[1] = temp
