@@ -1,9 +1,9 @@
-use super::runtime_value::RuntimeValue;
+use super::value::TrackedValue;
 use crate::common::Symbol;
 
 pub struct Environment {
     enclosing: Option<Box<Environment>>,
-    values: std::collections::HashMap<Symbol, RuntimeValue>,
+    values: std::collections::HashMap<Symbol, TrackedValue>,
     types: std::collections::HashMap<Symbol, crate::common::Type>,
 }
 
@@ -24,7 +24,7 @@ impl Environment {
         }
     }
 
-    pub fn get(&self, symbol: &Symbol) -> Option<RuntimeValue> {
+    pub fn get(&self, symbol: &Symbol) -> Option<TrackedValue> {
         if let Some(value) = self.values.get(symbol) {
             Some(value.clone())
         } else if let Some(enclosing) = &self.enclosing {
@@ -34,7 +34,7 @@ impl Environment {
         }
     }
 
-    pub fn assign(&mut self, symbol: &Symbol, value: RuntimeValue) -> bool {
+    pub fn assign(&mut self, symbol: &Symbol, value: TrackedValue) -> bool {
         if self.values.contains_key(symbol) {
             // Check if the types are the same
             if self.types.get(symbol) != Some(&value.get_type()) {
@@ -56,7 +56,7 @@ impl Environment {
         false
     }
 
-    pub fn define(&mut self, symbol: Symbol, value: RuntimeValue) {
+    pub fn define(&mut self, symbol: Symbol, value: TrackedValue) {
         // TODO: unecessary cloning!
         self.values.insert(symbol.clone(), value.clone());
         self.types.insert(symbol.clone(), value.get_type().clone());

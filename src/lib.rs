@@ -4,12 +4,13 @@ mod common;
 mod lexer;
 mod parser;
 mod evaluator;
+mod tracer;
 
 use common::StringPool;
 
 
 pub use common::DiagnosticsSink;
-pub use evaluator::RuntimeValue;
+pub use evaluator::Value;
 pub use evaluator::Environment;
 
 pub struct Interpreter {
@@ -27,7 +28,7 @@ impl Interpreter {
         }
     }
 
-    pub fn run(&mut self, code: &str) -> Result<RuntimeValue, ()> {
+    pub fn run(&mut self, code: &str) -> Result<Value, ()> {
 
         let mut lexer: lexer::Lexer = lexer::Lexer::new(code, &mut self.pool, &mut self.sink );
         let tokens = lexer.lex();
@@ -51,7 +52,7 @@ impl Interpreter {
         let result = evaluator.interpret(ast);
 
         match result {
-            Ok(value) => Ok(value),
+            Ok(value) => Ok(value.value), // Unwrap TrackedValue to Value
             Err(_) => return Err(()),
         }
     }

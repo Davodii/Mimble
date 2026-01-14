@@ -1,5 +1,5 @@
 use mimble;
-use mimble::RuntimeValue; 
+use mimble::Value; 
 
 // fn eval(source: &str) -> RuntimeValue {
 //     let mut sink = mimble::DiagnosticsSink::new();

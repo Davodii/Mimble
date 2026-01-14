@@ -54,7 +54,8 @@ impl DiagnosticsSink {
 
     pub fn format_diagnostic(&self, diag: &Diagnostic, source: &str) -> String {
         let line_num = source[..diag.span.start].lines().count();
-        let line_text = source.lines().nth(line_num - 1).unwrap_or("");
+        let line_num = if line_num == 0 { 0 } else { line_num - 1 };
+        let line_text = source.lines().nth(line_num).unwrap_or("");
 
         let col = diag.span.column.saturating_sub(1);
 
