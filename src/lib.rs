@@ -4,7 +4,7 @@ mod common;
 mod lexer;
 mod parser;
 mod evaluator;
-mod tracer;
+pub mod tracer;
 
 use common::StringPool;
 
@@ -12,13 +12,12 @@ use common::StringPool;
 pub use common::DiagnosticsSink;
 pub use evaluator::Value;
 pub use evaluator::Environment;
-pub use tracer::{Tracer, TraceEvent};
 
 pub struct Interpreter {
     pool: StringPool,
     sink: DiagnosticsSink,
     globals: Environment,
-    tracer: Option<Box<dyn Tracer>>,
+    tracer: Option<Box<dyn tracer::Tracer>>,
 }
 
 impl Interpreter {
@@ -31,12 +30,12 @@ impl Interpreter {
         }
     }
 
-    pub fn with_tracer(mut self, tracer: Box<dyn Tracer>) -> Self {
+    pub fn with_tracer(mut self, tracer: Box<dyn tracer::Tracer>) -> Self {
         self.tracer = Some(tracer);
         self
     }
 
-    pub fn set_tracer(&mut self, tracer: Box<dyn Tracer>) {
+    pub fn set_tracer(&mut self, tracer: Box<dyn tracer::Tracer>) {
         self.tracer = Some(tracer);
     }
 
