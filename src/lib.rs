@@ -30,11 +30,6 @@ impl Interpreter {
         }
     }
 
-    pub fn with_tracer(mut self, tracer: Box<dyn tracer::Tracer>) -> Self {
-        self.tracer = Some(tracer);
-        self
-    }
-
     pub fn set_tracer(&mut self, tracer: Box<dyn tracer::Tracer>) {
         self.tracer = Some(tracer);
     }
