@@ -34,6 +34,10 @@ impl Interpreter {
         self.tracer = Some(tracer);
     }
 
+    pub fn take_tracer(&mut self) -> Option<Box<dyn tracer::Tracer>> {
+        self.tracer.take()
+    }
+
     pub fn run(&mut self, code: &str) -> Result<Value, ()> {
 
         let mut lexer: lexer::Lexer = lexer::Lexer::new(code, &mut self.pool, &mut self.sink );

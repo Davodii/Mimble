@@ -10,9 +10,16 @@ fn main() {
 
     // Create the interpreter
     let mut interpreter = mimble::Interpreter::new();
+
+    // Set up a console tracer
+    let console_tracer = Box::new(mimble::tracer::ConsoleTracer);
+    interpreter.set_tracer(console_tracer);
+
     // Run the source code
     match interpreter.run(&source) {
-        Ok(value) => println!("Program finished successfully with value: {}", value),
+        Ok(value) => {
+            println!("Program finished successfully with value: {}", value);
+        },
         Err(_) => {
             eprintln!("An error occurred during execution.");
             interpreter.emit_diagnostics(&source);
