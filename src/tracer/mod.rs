@@ -58,6 +58,14 @@ impl TraceCollector {
             events: Vec::new(),
         }
     }
+
+    pub fn clear(&mut self) {
+        self.events.clear();
+    }
+
+    pub fn get_events(&self) -> &Vec<TraceEvent> {
+        &self.events
+    }
 }
 
 impl Tracer for TraceCollector {
