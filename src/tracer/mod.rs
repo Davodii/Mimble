@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::{Value, evaluator::DataSource};
 
 #[derive(Debug, Clone)]
@@ -27,6 +29,8 @@ pub enum TraceEvent {
 
 pub trait Tracer {
     fn trace(&mut self, event: TraceEvent);
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 /// A dummy tracer useful for testing.
@@ -34,7 +38,15 @@ pub struct DummyTracer;
 
 impl Tracer for DummyTracer {
     fn trace(&mut self, _event: TraceEvent) {
-        // Do northing
+        // Do nothing
+    }
+    
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 
@@ -44,6 +56,14 @@ pub struct ConsoleTracer;
 impl Tracer for ConsoleTracer {
     fn trace(&mut self, event: TraceEvent) {
         println!("[TRACE]: {:?}", event);
+    }
+    
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 
@@ -71,6 +91,14 @@ impl TraceCollector {
 impl Tracer for TraceCollector {
     fn trace(&mut self, event: TraceEvent) {
         self.events.push(event);
+    }
+    
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 
