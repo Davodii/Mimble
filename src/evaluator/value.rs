@@ -1,6 +1,6 @@
 use crate::{common::{Symbol, Type}, parser::LiteralValue};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub enum DataSource {
     /// A standalone variable (e.g. let x = ...)
     Variable(Symbol),
@@ -26,13 +26,13 @@ pub enum DataSource {
     None, // or Unknown
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct TrackedValue {
     pub value: Value,
     pub source: DataSource,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub enum Value {
     Integer(i64),
     Float(f64),

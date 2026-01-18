@@ -2,7 +2,7 @@ use std::any::Any;
 
 use crate::{Value, evaluator::DataSource};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub enum TraceEvent {
     /// For `let x = 10` or `let arr = [1,2,3]`
     Init {
