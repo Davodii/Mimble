@@ -12,11 +12,13 @@ use common::StringPool;
 pub use common::DiagnosticsSink;
 pub use evaluator::Value;
 pub use evaluator::Environment;
+pub use tracer::{Tracer, TraceEvent};
 
 pub struct Interpreter {
     pool: StringPool,
     sink: DiagnosticsSink,
     globals: Environment,
+    tracer: Option<Box<dyn Tracer>>,
 }
 
 impl Interpreter {
@@ -25,7 +27,17 @@ impl Interpreter {
             pool: StringPool::new(),
             sink: DiagnosticsSink::new(),
             globals: Environment::new(), // TODO: have a way to change the globals in code
+            tracer: None,
         }
+    }
+
+    pub fn with_tracer(mut self, tracer: Box<dyn Tracer>) -> Self {
+        self.tracer = Some(tracer);
+        self
+    }
+
+    pub fn set_tracer(&mut self, tracer: Box<dyn Tracer>) {
+        self.tracer = Some(tracer);
     }
 
     pub fn run(&mut self, code: &str) -> Result<Value, ()> {
@@ -48,7 +60,7 @@ impl Interpreter {
             &mut self.globals, 
             &mut self.pool, 
             &mut self.sink,
-            tracer::ConsoleTracer {}, // Use a simple console tracer
+            self.tracer.take(),
         );
         let result = evaluator.interpret(ast);
 

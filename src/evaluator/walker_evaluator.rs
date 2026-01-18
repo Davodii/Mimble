@@ -138,20 +138,20 @@ fn eval_binop(op: TokenKind, lhs: Value, rhs: Value) -> Result<Value, ()> {
         _ => Err(()),
     }
 }
-pub struct WalkerEvaluator<'a, T: Tracer> {
+pub struct WalkerEvaluator<'a> {
     // fields omitted
     environment: &'a mut Environment,
     pool: &'a mut StringPool,
     sink: &'a mut DiagnosticsSink,
-    tracer: T,  // generic tracer
+    tracer: Option<Box<dyn Tracer>>,
     next_uid: usize,
 }
-impl<'a, T: Tracer> WalkerEvaluator<'a, T> {
+impl<'a> WalkerEvaluator<'a> {
     pub fn new(
         env: &'a mut Environment, 
         pool: &'a mut StringPool, 
         sink: &'a mut DiagnosticsSink,
-        tracer: T,
+        tracer: Option<Box<dyn Tracer>>,
     ) -> Self {
         Self {
             environment: env,
@@ -185,7 +185,9 @@ impl<'a, T: Tracer> WalkerEvaluator<'a, T> {
     }
 
     fn emit(&mut self, event: TraceEvent) {
-        self.tracer.trace(event);
+        if let Some(tracer) = &mut self.tracer {
+            tracer.trace(event);
+        }
     }
 
     fn error(&mut self, span: Span, message: impl Into<String>){

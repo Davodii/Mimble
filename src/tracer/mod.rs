@@ -47,6 +47,25 @@ impl Tracer for ConsoleTracer {
     }
 }
 
+/// A tracer for collecting trace events in memory.
+pub struct TraceCollector {
+    pub events: Vec<TraceEvent>,
+}
+
+impl TraceCollector {
+    pub fn new() -> Self {
+        TraceCollector {
+            events: Vec::new(),
+        }
+    }
+}
+
+impl Tracer for TraceCollector {
+    fn trace(&mut self, event: TraceEvent) {
+        self.events.push(event);
+    }
+}
+
 // TODO: link literal expressions to constant ids
 // TODO: any assignment or mutation should be traceable 
 //       to the variable or data structure being modified
