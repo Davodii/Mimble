@@ -342,9 +342,8 @@ impl<'a> WalkerEvaluator<'a> {
         // Emit init event
         // Even though it is a new variable, we show the data moving
         // FROM its source INTO its new home
-        self.emit(TraceEvent::Assign {
-            from: value.source.clone(),
-            to: destination.clone(),
+        self.emit(TraceEvent::Init {
+            location: destination.clone(),
             value: value.clone(),
         });
 
