@@ -162,6 +162,14 @@ impl<'a> WalkerEvaluator<'a> {
         }
     }
 
+    pub fn set_tracer(&mut self, tracer: Box<dyn Tracer>) {
+        self.tracer = Some(tracer);
+    }
+
+    pub fn take_tracer(&mut self) -> Option<Box<dyn Tracer>> {
+        self.tracer.take()
+    }
+
     pub fn interpret(&mut self, code: Vec<Stmt>) -> Result<TrackedValue, ()> {
         let mut value = TrackedValue::from(Value::Nil);
         

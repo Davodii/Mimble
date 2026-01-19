@@ -15,9 +15,16 @@ fn main() {
     let console_tracer = Box::new(mimble::tracer::ConsoleTracer);
     interpreter.set_tracer(console_tracer);
 
+    let value = interpreter.run(&source);
+
     // Run the source code
-    match interpreter.run(&source) {
+    match value {
         Ok(value) => {
+            if let Some(_) = interpreter.take_tracer() {
+                println!("Taking tracer after execution.");
+            } else {
+                println!("No tracer found after execution.");
+            }
             println!("Program finished successfully with value: {}", value);
         },
         Err(_) => {

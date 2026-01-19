@@ -62,6 +62,9 @@ impl Interpreter {
         );
         let result = evaluator.interpret(ast);
 
+        // Restore the tracer
+        self.tracer = evaluator.take_tracer();
+
         match result {
             Ok(value) => Ok(value.value), // Unwrap TrackedValue to Value
             Err(_) => return Err(()),
