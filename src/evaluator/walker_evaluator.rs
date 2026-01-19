@@ -345,7 +345,7 @@ impl<'a> WalkerEvaluator<'a> {
         self.emit(TraceEvent::Assign {
             from: value.source.clone(),
             to: destination.clone(),
-            value: value.value.clone(),
+            value: value.clone(),
         });
 
         // Update the source of the value to be the variable itself
@@ -365,22 +365,22 @@ impl<'a> WalkerEvaluator<'a> {
         span: Span,
     ) -> Result<TrackedValue, ()> {
         // Evaluate the expression
-        let val = self.evaluate_expression(value)?;
+        let value = self.evaluate_expression(value)?;
 
         // Define the destination
         let destination = DataSource::Variable(*name);
 
         // Emit the trace event
         self.emit(TraceEvent::Assign {
-            from: val.source.clone(),
+            from: value.source.clone(),
             to: destination.clone(),
-            value: val.value.clone(),
+            value: value.clone(),
         });
 
         // Since the value now lives in the variable, we update its source
         // so that the next time it is moved, it reports this variable as its origin
         let updated_val = TrackedValue {
-            value: val.value.clone(),
+            value: value.value.clone(),
             source: destination,
         };
 
@@ -509,7 +509,7 @@ impl<'a> WalkerEvaluator<'a> {
             self.emit(TraceEvent::Assign { 
                 from: value.source.clone(), 
                 to: target_source.clone(), 
-                value: value.value.clone() 
+                value: value.clone() 
             });
 
             // Internal state update

@@ -1,20 +1,20 @@
 use std::any::Any;
 
-use crate::{Value, evaluator::DataSource};
+use crate::{Value, evaluator::{DataSource, TrackedValue}};
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub enum TraceEvent {
     /// For `let x = 10` or `let arr = [1,2,3]`
     Init {
         location: DataSource,
-        value: Value,
+        value: TrackedValue,
     },
 
     /// For `x = 20` or `arr[0] = 5`
     Assign {
         from: DataSource,
         to: DataSource,
-        value: Value,
+        value: TrackedValue,
     },
 
     // This is currently only for array index assignments
