@@ -40,7 +40,13 @@ pub enum ExprKind {
         object: Box<Expr>,
         index: Box<Expr>,
         value: Box<Expr>,
-    }
+    },
+
+    /// callee(arguments...)
+    FunctionCall {
+        callee: Box<Expr>,
+        arguments: Vec<Expr>,
+    },
 }
 
 
@@ -57,9 +63,9 @@ pub enum LiteralValue {
 pub enum StmtKind {
     ExprStmt(Box<Expr>),
     // PrintStmt(Box<Expr>),
-    // If { cond: Box<Expr>, then: Box<Stmt>, else_branch: Option<Box<Stmt>> },
-    // While { cond: Box<Expr>, body: Box<Stmt> },
-    // Block(Vec<Stmt>),
+    If { cond: Box<Expr>, then: Box<Stmt>, else_branch: Option<Box<Stmt>> },
+    While { cond: Box<Expr>, body: Box<Stmt> },
+    Block{ stmts: Vec<Stmt> },
     LetStmt { 
         name: Symbol, 
         type_annotation: Option<Type>, 
@@ -80,6 +86,7 @@ impl ExprKind {
             ExprKind::ArrayLiteral(_) => "array literal",
             ExprKind::Get { .. } => "array access",
             ExprKind::Set { .. } => "array assignment",
+            ExprKind::FunctionCall { .. } => "function call",
         }
     }
 }

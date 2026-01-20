@@ -1,0 +1,6 @@
+let num = 10
+if true do
+    num = 20
+end
+
+num

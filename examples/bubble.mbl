@@ -1,0 +1,21 @@
+
+let unsorted = [ 5, 2, 7, 8, 4, 9, 1]
+
+let i = 0
+let n = len(unsorted)
+
+while i < n do
+    let j = 0
+    while j < (n - i - 1) do
+        if unsorted[j] > unsorted[j + 1] do
+            let temp = unsorted[j]
+            unsorted[j] = unsorted[j + 1]
+            unsorted[j + 1] = temp
+        end
+
+        j = j + 1
+    end
+    i = i + 1
+end
+
+unsorted

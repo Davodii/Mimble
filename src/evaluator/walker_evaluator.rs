@@ -1,5 +1,9 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use super::environment::Environment;
 use super::value::Value;
+use crate::NativeRegistry;
 use crate::evaluator::DataSource;
 use crate::evaluator::value::TrackedValue;
 use crate::parser::{Stmt, StmtKind, Expr, ExprKind};
@@ -140,24 +144,27 @@ fn eval_binop(op: TokenKind, lhs: Value, rhs: Value) -> Result<Value, ()> {
 }
 pub struct WalkerEvaluator<'a> {
     // fields omitted
-    environment: &'a mut Environment,
+    environment: Rc<RefCell<Environment>>,
     pool: &'a mut StringPool,
     sink: &'a mut DiagnosticsSink,
     tracer: Option<Box<dyn Tracer>>,
+    registry: NativeRegistry,
     next_uid: usize,
 }
 impl<'a> WalkerEvaluator<'a> {
     pub fn new(
-        env: &'a mut Environment, 
+        // env: &'a mut Environment, 
         pool: &'a mut StringPool, 
         sink: &'a mut DiagnosticsSink,
         tracer: Option<Box<dyn Tracer>>,
+        registry: NativeRegistry,
     ) -> Self {
         Self {
-            environment: env,
+            environment: Rc::new(RefCell::new(Environment::new())),
             pool,
             sink,
             tracer,
+            registry: registry.clone(),
             next_uid: 0,
         }
     }
@@ -222,8 +229,105 @@ impl<'a> WalkerEvaluator<'a> {
                 }, 
                 span: _
             } => self.execute_let_statement(name, type_annotation, initializer),
+            Stmt{
+                node: StmtKind::Block{ stmts: statements },
+                span: _
+            } => {
+                self.evaluate_block(statements)
+            },
+            Stmt {
+                node: StmtKind::While {
+                    cond, body
+                },
+                span: _
+            } => {
+                self.evaluate_while(cond, body)
+            }
+            Stmt{
+                node: StmtKind::If { 
+                    cond, 
+                    then, 
+                    else_branch 
+                },
+                span: _
+            } => {
+                self.evaluate_if(cond, then, else_branch)
+            }
         }
     }
+
+    fn evaluate_while(
+        &mut self, 
+        cond: &Box<Expr>, 
+        body: &Box<Stmt>
+    ) -> Result<TrackedValue, ()> {
+        loop {
+            let cond_value = self.evaluate_expression(cond)?;
+
+            match cond_value.value {
+                Value::Boolean(true) => {
+                    self.execute_statement(body)?;
+                },
+                Value::Boolean(false) => {
+                    break;
+                },
+                _ => {
+                    self.error(
+                        cond.span, 
+                        "while condition must evaluate to a boolean"
+                    );
+                    return Err(());
+                }
+            }
+        }
+
+        Ok(TrackedValue::from(Value::Nil))
+    }
+
+    fn evaluate_if(
+        &mut self, 
+        cond: &Box<Expr>, 
+        then_branch: &Box<Stmt>, 
+        else_branch: &Option<Box<Stmt>>
+    ) -> Result<TrackedValue, ()> {
+        let cond_value = self.evaluate_expression(cond)?;
+
+        match cond_value.value {
+            Value::Boolean(true) => {
+                self.execute_statement(then_branch)
+            },
+            Value::Boolean(false) => {
+                if let Some(else_branch) = else_branch {
+                    self.execute_statement(else_branch)
+                } else {
+                    Ok(TrackedValue::from(Value::Nil))
+                }
+            },
+            _ => {
+                self.error(
+                    cond.span, 
+                    "if condition must evaluate to a boolean"
+                );
+                Err(())
+            }
+        }
+    }
+
+    fn evaluate_block(&mut self, statements: &Vec<Stmt>) -> Result<TrackedValue, ()>{
+        // Begina a new scope
+        let previous = self.environment.clone();
+        self.environment = Environment::extend(previous.clone());
+
+        let mut last_value = TrackedValue::from(Value::Nil);
+        for stmt in statements {
+            last_value = self.execute_statement(stmt)?;
+        }
+
+        // End the scope
+        self.environment = previous;
+
+        Ok(last_value)
+    }    
 
     fn evaluate_expression(&mut self, expr: &crate::parser::Expr) -> Result<TrackedValue, ()> {
         match expr {
@@ -235,7 +339,7 @@ impl<'a> WalkerEvaluator<'a> {
                 self.evaluate_unary(op, expr)
             },
             Expr{node: ExprKind::Identifier(name), span } => {
-                if let Some(value) = self.environment.get(name) {
+                if let Some(value) = self.environment.borrow().get(name) {
                     Ok(value)
                 } else {
                     self.error(
@@ -260,6 +364,9 @@ impl<'a> WalkerEvaluator<'a> {
             Expr{node: ExprKind::Set { object, index, value }, span: _} => {
                 self.execute_array_set(object, index, value)
             },
+            Expr{node: ExprKind::FunctionCall { callee, arguments }, span: _} => {
+                self.function_call(callee, arguments)
+            }
         }
     }
 
@@ -353,7 +460,7 @@ impl<'a> WalkerEvaluator<'a> {
             source: destination,
         };
 
-        self.environment.define(name.clone(), tracked_for_env.clone());
+        self.environment.borrow_mut().define(name.clone(), tracked_for_env.clone());
         Ok(value)
     }
 
@@ -383,7 +490,7 @@ impl<'a> WalkerEvaluator<'a> {
             source: destination,
         };
 
-        if self.environment.assign(name, updated_val.clone()) {
+        if self.environment.borrow_mut().assign(name, updated_val.clone()) {
             Ok(updated_val)
         } else {
             self.error(
@@ -534,7 +641,7 @@ impl<'a> WalkerEvaluator<'a> {
                     source: DataSource::Variable(symbol),
                 };
 
-                if !self.environment.assign(&symbol, update_array_tracked) {
+                if !self.environment.borrow_mut().assign(&symbol, update_array_tracked) {
                     self.error(
                         obj_expr.span, 
                         format!(
@@ -551,6 +658,42 @@ impl<'a> WalkerEvaluator<'a> {
             self.error(
                 obj_expr.span, 
                 "expected array with an integer index"
+            );
+            Err(())
+        }
+    }
+    
+    fn function_call(&mut self, callee: &Expr, arguments: &[Expr]) -> Result<TrackedValue, ()> {
+        if let Expr { node: ExprKind::Identifier(func_name), span: _ } = callee {
+            // Only support native functions for now
+            let name = self.pool.resolve(*func_name).to_string();
+
+            let func = self.registry.functions.get(&name).copied();
+
+            if let Some(native_fn) = func {
+                // Evaluate arguments
+                let mut arg_values = Vec::new();
+                for arg_expr in arguments {
+                    let arg_value = self.evaluate_expression(arg_expr)?;
+                        arg_values.push(arg_value);
+                }
+
+                let result = native_fn(arg_values);
+                Ok(result)
+            } else {
+                self.error(
+                    callee.span,
+                    format!(
+                        "undefined function '{}' called", 
+                        self.pool.resolve(*func_name)
+                    )
+                );
+                Err(())
+            }
+        } else {
+            self.error(
+                callee.span, 
+                "function call requires a function identifier as callee"
             );
             Err(())
         }

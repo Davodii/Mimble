@@ -1,4 +1,4 @@
-use crate::{common::{Symbol, Type}, parser::LiteralValue};
+use crate::{common::{Symbol, Type}, parser::{LiteralValue, Stmt}};
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub enum DataSource {
@@ -39,14 +39,23 @@ pub enum Value {
     // TODO: maybe differentiate between static strings and dynamic strings
     String(String),
     Boolean(bool),
-    Nil,
     Array {
         id: usize,
         elements: Vec<TrackedValue>,
         element_type: Type,
     },
-    // Other variants omitted
-    // Function, 
+    Function(FunctionType),
+    Nil,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(tag = "type", content = "data")]
+pub enum FunctionType {
+    Native(String),
+    // User {
+    //     params: Vec<String>,
+    //     body: Vec<Stmt>,
+    // }
 }
 
 impl From<LiteralValue> for TrackedValue {
@@ -88,6 +97,7 @@ impl TrackedValue {
             Value::Boolean(_) => Type::Boolean,
             Value::Nil => Type::Nil,
             Value::Array { id: _, elements: _, element_type } => Type::Array(Box::new(element_type.clone())),
+            Value::Function(function_type) => todo!(),
         }
     }
 }
@@ -104,6 +114,7 @@ impl std::fmt::Display for Value {
                 let elements: Vec<String> = elements.iter().map(|v| format!("{}", v)).collect();
                 write!(f, "[{}]", elements.join(", "))
             },
+            Value::Function(function_type) => todo!(),
         }
     }
 }

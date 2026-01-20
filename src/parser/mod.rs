@@ -305,7 +305,35 @@ impl<'a> Parser<'a> {
             TokenKind::StringLiteral(val) => ExprKind::Literal(LiteralValue::String(self.pool.resolve(val).to_string())),
             TokenKind::True => ExprKind::Literal(LiteralValue::Boolean(true)),
             TokenKind::False => ExprKind::Literal(LiteralValue::Boolean(false)),
-            TokenKind::Identifier(val) => ExprKind::Identifier(val),
+            TokenKind::Identifier(val) => {
+                // Check if there is a function call
+                if self.matches(TokenKind::LeftParen) {
+                    let mut arguments: Vec<Expr> = Vec::new();
+
+                    if !self.check(TokenKind::RightParen) {
+                        loop {
+                            let argument = self.expression()?;
+                            arguments.push(argument);
+
+                            if !self.matches(TokenKind::Comma) {
+                                break;
+                            }
+                        }
+                    }
+
+                    self.consume(TokenKind::RightParen, "Expected ')' after function call arguments")?;
+
+                    ExprKind::FunctionCall {
+                        callee: Box::new(Expr {
+                            node: ExprKind::Identifier(val),
+                            span: span.clone(),
+                        }),
+                        arguments,
+                    }
+                } else {
+                    ExprKind::Identifier(val)
+                }
+            },
             TokenKind::LeftParen => {
                 let expr = self.expression()?;
 
@@ -359,10 +387,10 @@ impl<'a> Parser<'a> {
             self.if_stmt()
         } else if self.matches(TokenKind::While) {
             self.while_stmt()
-        } else if self.matches(TokenKind::Do) {
-            todo!()
         } else if self.matches(TokenKind::Let) {
             self.declaration()
+        } else if self.check(TokenKind::Do) {
+            self.block()
         } else {
             // fallback: expression statement
             let expr = self.expression()?;
@@ -375,11 +403,62 @@ impl<'a> Parser<'a> {
     }
 
     fn if_stmt(&mut self) -> Result<Stmt, ()> {
-        todo!()
+        let condition = Box::new(self.expression()?);
+        let start = condition.span.clone();
+
+        // Begin a new scope
+        let then_branch = Box::new(self.block()?);
+
+        // TODO: parse else if branches
+
+        let else_branch = if self.matches(TokenKind::Else) {
+            Some(Box::new(self.block()?))
+        } else {
+            None
+        };
+
+        Ok(Stmt {
+            node: StmtKind::If {
+                cond: condition,
+                then: then_branch,
+                else_branch,
+            },
+            span: start.merge(self.previous().span),
+        })
     }
 
     fn while_stmt(&mut self) -> Result<Stmt, ()> {
-        todo!()
+        let condition = Box::new(self.expression()?);
+        let start = condition.span.clone();
+
+        // Begin a new scope
+        let body = Box::new(self.block()?);
+
+        Ok(Stmt {
+            node: StmtKind::While {
+                cond: condition,
+                body,
+            },
+            span: start.merge(self.previous().span),
+        })
+    }
+
+    fn block(&mut self) -> Result<Stmt, ()> {
+        let start = self.consume(TokenKind::Do, "Expected 'do' to start a block")?;
+
+        let mut statements: Vec<Stmt> = Vec::new();
+
+        while !self.check(TokenKind::End) && !self.is_at_end() {
+            let stmt = self.statement()?;
+            statements.push(stmt);
+        }
+
+        let end = self.consume(TokenKind::End, "Expected 'end' to close a block")?;
+
+        Ok(Stmt {
+            node: StmtKind::Block{ stmts: statements },
+            span: start.span.merge(end.span),
+        })
     }
 
     fn declaration(&mut self) -> Result<Stmt, ()> {

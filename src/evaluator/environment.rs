@@ -1,34 +1,43 @@
 use super::value::TrackedValue;
 use crate::common::Symbol;
+use std::collections::HashMap;
+use std::rc::Rc;
+use std::cell::RefCell;
+
+type SharedEnv = Rc<RefCell<Environment>>;
 
 pub struct Environment {
-    enclosing: Option<Box<Environment>>,
-    values: std::collections::HashMap<Symbol, TrackedValue>,
-    types: std::collections::HashMap<Symbol, crate::common::Type>,
+    pub parent: Option<SharedEnv>,
+    values: HashMap<Symbol, TrackedValue>,
+    types: HashMap<Symbol, crate::common::Type>,
 }
 
 impl Environment {
     pub fn new() -> Self {
         Environment { 
-            enclosing: None, 
-            values: std::collections::HashMap::new(),
-            types: std::collections::HashMap::new(),
+            parent: None, 
+            values: HashMap::new(),
+            types: HashMap::new(),
         }
     }
 
-    pub fn new_with_enclosing(enclosing: Environment) -> Self {
-        Environment { 
-            enclosing: Some(Box::new(enclosing)), 
-            values: std::collections::HashMap::new(),
-            types: std::collections::HashMap::new(),
-        }
+    pub fn new_shared() -> SharedEnv {
+        Rc::new(RefCell::new(Self::new()))
+    }
+
+    pub fn extend(parent: SharedEnv) -> SharedEnv {
+        Rc::new(RefCell::new(Self {
+            parent: Some(parent),
+            values: HashMap::new(),
+            types: HashMap::new(),
+        }))
     }
 
     pub fn get(&self, symbol: &Symbol) -> Option<TrackedValue> {
         if let Some(value) = self.values.get(symbol) {
             Some(value.clone())
-        } else if let Some(enclosing) = &self.enclosing {
-            enclosing.get(symbol)
+        } else if let Some(enclosing) = &self.parent {
+            enclosing.borrow().get(symbol)
         } else {
             None
         }
@@ -47,8 +56,8 @@ impl Environment {
         }
 
         // Check if the variable exists in the enclosing environments
-        if let Some(enclosing) = &mut self.enclosing {
-            if enclosing.assign(symbol, value.clone()) {
+        if let Some(enclosing) = &mut self.parent {
+            if enclosing.borrow_mut().assign(symbol, value.clone()) {
                 return true;
             }
         }
