@@ -128,6 +128,10 @@ impl<'a> Parser<'a> {
         self.peek().kind == TokenKind::EOF
     }
 
+    fn make_expr(&mut self, node: ExprKind, span: Span) -> Result<Expr, ()> {
+        Ok(Expr { node, span  })
+    }
+
     // ----- Expression Parsing -----
     fn expression(&mut self) -> Result<Expr, ()> {
         self.assignment()
@@ -140,38 +144,29 @@ impl<'a> Parser<'a> {
             let value = self.assignment()?;
             let combined_span = expr.span.merge(value.span);
 
-            match expr.node {
-                ExprKind::Identifier(name) => {
-                    return Ok(Expr {
-                        node: ExprKind::Assign { 
-                            name: name, 
-                            value: Box::new(value) 
-                        },
-                        span: combined_span,
-                    });
+            let node = match expr.node {
+                ExprKind::Identifier(name) => ExprKind::Assign { 
+                    name: name, 
+                    value: Box::new(value) 
                 },
-                ExprKind::Get { object, index } => {
-                    let combined_span = expr.span.merge(value.span);
-                    return Ok(Expr {
-                        node: ExprKind::Set { 
-                            object, 
-                            index, 
-                            value: Box::new(value) 
-                        },
-                        span: combined_span,
-                    });
+                ExprKind::Get { object, index } => ExprKind::Set { 
+                    object, 
+                    index, 
+                    value: Box::new(value) 
                 },
                 _ => {
                     self.error(
                         expr.span,
-                        // TODO: show the actual expression as well
-                        format!("{} is not an assignable expression",expr.node.type_to_string()),
+                        format!("Invalid assignment target: {}",expr.node.type_to_string()),
                     );
                     return Err(());
                 }
-            }
+            };
+
+            return Ok(Expr { node, span: combined_span });
         }
 
+        // Base case, no assignment
         Ok(expr)
     }
 
@@ -233,8 +228,11 @@ impl<'a> Parser<'a> {
         // Call the "next" level 
         let mut expr = next(self)?;
 
+        // Keep parsing the same level binary operations
         while self.matches_multiple(types) {
             let op = self.previous().kind.clone();
+
+            // Parse the right-hand side
             let right = next(self)?;
 
             let combined_span = expr.span.merge(right.span);
@@ -288,6 +286,7 @@ impl<'a> Parser<'a> {
                     span: combined_span,
                 };
             } else {
+                // TODO: check for calls
                 break;
             }
         }
@@ -297,72 +296,33 @@ impl<'a> Parser<'a> {
 
     fn primary(&mut self) -> Result<Expr, ()> {
         let tok = self.advance().clone();
-        let mut span = tok.span;
+        let span = tok.span;
 
-        let kind = match tok.kind {
-            TokenKind::IntegerLiteral(val) => ExprKind::Literal(LiteralValue::Integer(val)),
-            TokenKind::FloatLiteral(val) => ExprKind::Literal(LiteralValue::Float(val)),
-            TokenKind::StringLiteral(val) => ExprKind::Literal(LiteralValue::String(self.pool.resolve(val).to_string())),
-            TokenKind::True => ExprKind::Literal(LiteralValue::Boolean(true)),
-            TokenKind::False => ExprKind::Literal(LiteralValue::Boolean(false)),
+        match tok.kind {
+            // Literals
+            TokenKind::IntegerLiteral(val) => self.make_expr(ExprKind::Literal(LiteralValue::Integer(val)), span),
+            TokenKind::FloatLiteral(val) => self.make_expr(ExprKind::Literal(LiteralValue::Float(val)), span),
+            TokenKind::True => self.make_expr(ExprKind::Literal(LiteralValue::Boolean(true)), span),
+            TokenKind::False => self.make_expr(ExprKind::Literal(LiteralValue::Boolean(false)), span),
+            TokenKind::StringLiteral(val) => {
+                let s = self.pool.resolve(val).to_string();
+                self.make_expr(ExprKind::Literal(LiteralValue::String(s)), span)
+            },
+            // Identifiers and function calls
             TokenKind::Identifier(val) => {
-                // Check if there is a function call
+                let expr = Expr { node: ExprKind::Identifier(val.clone()), span: span.clone() };
+
                 if self.matches(TokenKind::LeftParen) {
-                    let mut arguments: Vec<Expr> = Vec::new();
-
-                    if !self.check(TokenKind::RightParen) {
-                        loop {
-                            let argument = self.expression()?;
-                            arguments.push(argument);
-
-                            if !self.matches(TokenKind::Comma) {
-                                break;
-                            }
-                        }
-                    }
-
-                    self.consume(TokenKind::RightParen, "Expected ')' after function call arguments")?;
-
-                    ExprKind::FunctionCall {
-                        callee: Box::new(Expr {
-                            node: ExprKind::Identifier(val),
-                            span: span.clone(),
-                        }),
-                        arguments,
-                    }
+                    self.finish_call(expr)
                 } else {
-                    ExprKind::Identifier(val)
+                    Ok(expr)
                 }
             },
-            TokenKind::LeftParen => {
-                let expr = self.expression()?;
 
-                // Check for closing parentheses
-                self.consume(TokenKind::RightParen, "Expected ')' to close set of parentheses")?;
+            // Groupings
+            TokenKind::LeftParen => self.grouping_expression(),
+            TokenKind::LeftSquareBracket => self.array_literal(span),
 
-                // For grouped expressions, we return the inner expression directly.
-                // Note: Some people prefer to wrap this in a new Span that 
-                // covers from '(' to ')', but returning the inner expr is fine.
-                return Ok(expr);
-            },
-            TokenKind::LeftSquareBracket => {
-                let mut elements: Vec<Expr> = Vec::new();
-
-                if !self.check(TokenKind::RightSquareBracket) {
-                    loop {
-                        let element = self.expression()?;
-                        elements.push(element);
-
-                        if !self.matches(TokenKind::Comma) {
-                            break;
-                        }
-                    }
-                }
-
-                self.consume(TokenKind::RightSquareBracket, "Expected ']' to close array literal")?;
-
-                ExprKind::ArrayLiteral(elements)
-            },
             _ => {
                 self.error(
                     span, 
@@ -370,14 +330,45 @@ impl<'a> Parser<'a> {
                 );
                 return Err(());
             }
-        };
+        }
+    }
 
-        // Update the span to include the entire atom
-        span = span.merge(self.previous().span);
+    fn grouping_expression(&mut self) -> Result<Expr, ()> {
+        let expr = self.expression()?;
+        self.consume(TokenKind::RightParen, "Expected ')' to close set of parentheses")?;
+        Ok(expr)
+    }
+
+    fn array_literal(&mut self, open_span: Span) -> Result<Expr, ()> {
+        let mut elements: Vec<Expr> = Vec::new();
+        if !self.check(TokenKind::RightSquareBracket) {
+            loop {
+                elements.push(self.expression()?);
+                if !self.matches(TokenKind::Comma) { break; }
+            }
+        }
+
+        let end_span = self.consume(TokenKind::RightSquareBracket, "Expected ']' to close array literal")?.span;
+        Ok(Expr {
+            node: ExprKind::ArrayLiteral(elements),
+            span: open_span.merge(end_span),
+        })
+    }
+
+    fn finish_call(&mut self, callee: Expr) -> Result<Expr, ()> {
+        let mut arguments = Vec::new();
+        if !self.check(TokenKind::RightParen) {
+            loop {
+                arguments.push(self.expression()?);
+                if !self.matches(TokenKind::Comma) { break; }
+            }
+        }
+
+        let r_paren = self.consume(TokenKind::RightParen, "Expected ')' after function arguments")?;
 
         Ok(Expr {
-            node: kind,
-            span,
+            span: callee.span.merge(r_paren.span),
+            node: ExprKind::FunctionCall { callee: Box::new(callee), arguments },
         })
     }
 
@@ -463,7 +454,11 @@ impl<'a> Parser<'a> {
 
     fn declaration(&mut self) -> Result<Stmt, ()> {
         let name_token = self.consume_identifier("Expected an identifier after 'let'")?;
-        let span = name_token.span;
+
+        let symbol = match name_token.kind {
+            TokenKind::Identifier(sym) => sym,
+            _ => unreachable!("consume_identifier guaranteed an identifier"),
+        };
 
         // Check if we have an optional type annotation
         let type_annotation = if self.matches(TokenKind::Colon) {
@@ -473,19 +468,9 @@ impl<'a> Parser<'a> {
         };
 
         self.consume(TokenKind::Assign, "Expected '=' after in a 'let' statement")?;
-
         let initializer = self.expression()?;
 
-        // TODO: this is so bad, we already know name_token is a TokenKind::Identifier
-        let symbol = if let TokenKind::Identifier(sym) = name_token.kind.clone() {
-            sym
-        } else {
-            self.error(
-                name_token.span,
-                "Expected identifier token",
-            );
-            return Err(());
-        };
+        let span = name_token.span.merge(initializer.span);
 
         Ok(Stmt {
             node: StmtKind::LetStmt {
@@ -501,17 +486,17 @@ impl<'a> Parser<'a> {
         if self.matches(TokenKind::LeftSquareBracket) {
             let inner_type = self.parse_type()?;
             self.consume(TokenKind::RightSquareBracket, "Expected ']' after array type")?;
-            Ok(Type::Array(Box::new(inner_type)))
-        } else {
-            match self.advance().kind {
-                TokenKind::Integer => Ok(Type::Integer),
-                TokenKind::Float => Ok(Type::Float),
-                TokenKind::Boolean => Ok(Type::Boolean),
-                TokenKind::String => Ok(Type::String),
-                _ => {
-                    self.error(self.previous().span, "Expected a type ('int', 'float', 'bool', 'string', 'array') after type definition (':')");
-                    Err(())
-                },
+            return Ok(Type::Array(Box::new(inner_type)));
+        }
+        let tok = self.advance();
+        match tok.kind {
+            TokenKind::Integer  => Ok(Type::Integer),
+            TokenKind::Float    => Ok(Type::Float),
+            TokenKind::Boolean  => Ok(Type::Boolean),
+            TokenKind::String   => Ok(Type::String),
+            _ => {
+                self.error(tok.span, "Expected a type (int, float, bool, string, or [type])");
+                Err(())
             }
         }
     }

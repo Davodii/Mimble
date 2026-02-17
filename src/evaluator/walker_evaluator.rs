@@ -214,45 +214,18 @@ impl<'a> WalkerEvaluator<'a> {
     }
 
     fn execute_statement(&mut self, stmt: &Stmt) -> Result<TrackedValue, ()> {
-        match stmt {
-            Stmt{
-                node: StmtKind::ExprStmt(expr), 
-                span: _
-            } => {
-                self.evaluate_expression(&expr)
+        match &stmt.node {
+            StmtKind::ExprStmt(expr) => self.evaluate_expression(&expr),
+            StmtKind::LetStmt { name, type_annotation, initializer } => {
+                self.execute_let_statement(name, type_annotation, initializer)
             },
-            Stmt{
-                node: StmtKind::LetStmt { 
-                    name, 
-                    type_annotation, 
-                    initializer 
-                }, 
-                span: _
-            } => self.execute_let_statement(name, type_annotation, initializer),
-            Stmt{
-                node: StmtKind::Block{ stmts: statements },
-                span: _
-            } => {
-                self.evaluate_block(statements)
-            },
-            Stmt {
-                node: StmtKind::While {
-                    cond, body
-                },
-                span: _
-            } => {
-                self.evaluate_while(cond, body)
-            }
-            Stmt{
-                node: StmtKind::If { 
-                    cond, 
-                    then, 
-                    else_branch 
-                },
-                span: _
-            } => {
+            StmtKind::Block{ stmts: statements } => self.evaluate_block(statements),
+            StmtKind::While { cond, body } => self.evaluate_while(cond, body),
+            StmtKind::If { cond, then, else_branch } => {
                 self.evaluate_if(cond, then, else_branch)
             }
+
+            // TODO: add the other statement kinds
         }
     }
 
@@ -264,13 +237,9 @@ impl<'a> WalkerEvaluator<'a> {
         loop {
             let cond_value = self.evaluate_expression(cond)?;
 
-            match cond_value.value {
-                Value::Boolean(true) => {
-                    self.execute_statement(body)?;
-                },
-                Value::Boolean(false) => {
-                    break;
-                },
+            // TODO: handle break statements
+            let condition = match cond_value.value {
+                Value::Boolean(b) => b,
                 _ => {
                     self.error(
                         cond.span, 
@@ -278,6 +247,12 @@ impl<'a> WalkerEvaluator<'a> {
                     );
                     return Err(());
                 }
+            };
+
+            if condition {
+                self.execute_statement(body)?;
+            } else {
+                break;
             }
         }
 
@@ -292,23 +267,25 @@ impl<'a> WalkerEvaluator<'a> {
     ) -> Result<TrackedValue, ()> {
         let cond_value = self.evaluate_expression(cond)?;
 
-        match cond_value.value {
-            Value::Boolean(true) => {
-                self.execute_statement(then_branch)
-            },
-            Value::Boolean(false) => {
-                if let Some(else_branch) = else_branch {
-                    self.execute_statement(else_branch)
-                } else {
-                    Ok(TrackedValue::from(Value::Nil))
-                }
-            },
+        let condition = match cond_value.value {
+            Value::Boolean(b) => b,
             _ => {
                 self.error(
                     cond.span, 
                     "if condition must evaluate to a boolean"
                 );
-                Err(())
+                return Err(());
+            }
+        };
+
+        if condition {
+            self.execute_statement(then_branch)
+        } else {
+            // TODO: handle else-if branches
+            if let Some(else_branch) = else_branch {
+                self.execute_statement(else_branch)
+            } else {
+                Ok(TrackedValue::from(Value::Nil))
             }
         }
     }
@@ -330,51 +307,51 @@ impl<'a> WalkerEvaluator<'a> {
     }    
 
     fn evaluate_expression(&mut self, expr: &crate::parser::Expr) -> Result<TrackedValue, ()> {
-        match expr {
-            Expr{node: ExprKind::Literal(lit), span: _} => Ok(TrackedValue::from(lit.clone())),
-            Expr{node: ExprKind::Binary { left, op, right }, span: _} => {
+        let span = expr.span.clone();
+        match &expr.node {
+            ExprKind::Literal(lit) => Ok(TrackedValue::from(lit.clone())),
+            ExprKind::Binary { left, op, right } => {
                 self.execute_binary_operation(left, op, right)
             },
-            Expr{node: ExprKind::Unary { op, expr }, span: _} => {
+            ExprKind::Unary { op, expr } => {
                 self.evaluate_unary(op, expr)
             },
-            Expr{node: ExprKind::Identifier(name), span } => {
+            ExprKind::Identifier(name) => {
+                // Check the environment for the variable
+                // TODO: this problem should be resolved by the resolver pass
                 if let Some(value) = self.environment.borrow().get(name) {
                     Ok(value)
                 } else {
                     self.error(
-                        *span, 
-                        format!(
-                            "undefined variable '{}' found", 
-                            self.pool.resolve(*name)
-                        )
+                        span, 
+                        format!("undefined variable '{}' found", self.pool.resolve(*name))
                     );
                     Err(())
                 }
             },
-            Expr{node: ExprKind::Assign { name, value }, span} => {
-                self.execute_variable_assignment_statement(name, value, *span)
+            ExprKind::Assign { name, value } => {
+                self.execute_variable_assignment_statement(name, value, span)
             },
-            Expr{node: ExprKind::ArrayLiteral(elements), span: _} => {
+            ExprKind::ArrayLiteral(elements) => {
                 self.execute_array_literal(elements)
             },
-            Expr{node: ExprKind::Get { object, index }, span: _} => {
+            ExprKind::Get { object, index } => {
                 self.execute_array_get(object, index)
             },
-            Expr{node: ExprKind::Set { object, index, value }, span: _} => {
+            ExprKind::Set { object, index, value } => {
                 self.execute_array_set(object, index, value)
             },
-            Expr{node: ExprKind::FunctionCall { callee, arguments }, span: _} => {
+            ExprKind::FunctionCall { callee, arguments } => {
                 self.function_call(callee, arguments)
             }
         }
     }
 
     fn evaluate_unary(&mut self, op: &TokenKind, expr: &Box<crate::common::span::Spanned<ExprKind>>) -> Result<TrackedValue, ()> {
-        let tv = self.evaluate_expression(expr)?;
-        let value = match op {
+        let tracked_value = self.evaluate_expression(expr)?;
+        let calculated_value = match op {
             TokenKind::Minus => {
-                match &tv.value {
+                match &tracked_value.value {
                     Value::Integer(n) => Value::Integer(-n),
                     Value::Float(n) => Value::Float(-n),
                     _ => {
@@ -387,7 +364,7 @@ impl<'a> WalkerEvaluator<'a> {
                 }
             },
             TokenKind::Not => {
-                match &tv.value {
+                match &tracked_value.value {
                     Value::Boolean(b) => Value::Boolean(!b),
                     _ => {
                         self.error(
@@ -401,7 +378,7 @@ impl<'a> WalkerEvaluator<'a> {
             _ => todo!("Handle type mismatches"),
         };
     
-        Ok(TrackedValue::from(value))
+        Ok(TrackedValue::from(calculated_value))
     }
     
     fn execute_binary_operation(&mut self, left: &Box<Expr>, op: &TokenKind, right: &Box<Expr>) -> Result<TrackedValue, ()> {
@@ -431,6 +408,7 @@ impl<'a> WalkerEvaluator<'a> {
             let value_type = value.get_type();
             if &value_type != expected_type {
                 self.error(
+                    // TODO: change the span to incorporate the assignment aswell
                     initializer.span, 
                     format!(
                         "Variable was declared with type '{}' but expression has type '{}'",
@@ -438,17 +416,12 @@ impl<'a> WalkerEvaluator<'a> {
                         value_type
                     ),
                 );
-
                 return Err(());
             }
         }
 
         // Define the destination identity
         let destination = DataSource::Variable(*name);
-
-        // Emit init event
-        // Even though it is a new variable, we show the data moving
-        // FROM its source INTO its new home
         self.emit(TraceEvent::Init {
             location: destination.clone(),
             value: value.clone(),
