@@ -3,6 +3,7 @@ use std::any::Any;
 use crate::{Value, evaluator::{DataSource, TrackedValue}};
 
 #[derive(Debug, Clone, serde::Serialize)]
+#[serde(tag = "kind")]
 pub enum TraceEvent {
     /// For `let x = 10` or `let arr = [1,2,3]`
     Init {
