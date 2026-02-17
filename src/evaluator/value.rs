@@ -1,10 +1,10 @@
-use crate::{common::{Symbol, Type}, parser::{LiteralValue, Stmt}};
+use crate::{common::{Type}, parser::{LiteralValue, Stmt}};
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(tag = "kind", content = "value")]
 pub enum DataSource {
     /// A standalone variable (e.g. let x = ...)
-    Variable(Symbol),
+    Variable(String),
 
     /// A specific slot in an array (e.g. arr[2])
     /// Tracks the ID of the array and the index accessed
@@ -38,9 +38,9 @@ pub struct TrackedValue {
 pub enum Value {
     Integer(i64),
     Float(f64),
-    // TODO: maybe differentiate between static strings and dynamic strings
     String(String),
     Boolean(bool),
+    #[serde(rename_all = "camelCase")]
     Array {
         id: usize,
         elements: Vec<TrackedValue>,

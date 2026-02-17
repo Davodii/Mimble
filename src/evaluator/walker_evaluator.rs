@@ -396,7 +396,8 @@ impl<'a> WalkerEvaluator<'a> {
     }
 
     fn execute_let_statement(
-        &mut self, name: &Symbol, 
+        &mut self, 
+        name: &Symbol, 
         type_annotation: &Option<crate::common::Type>, 
         initializer: &Box<Expr>
     ) -> Result<TrackedValue, ()> {
@@ -421,7 +422,7 @@ impl<'a> WalkerEvaluator<'a> {
         }
 
         // Define the destination identity
-        let destination = DataSource::Variable(*name);
+        let destination = DataSource::Variable(self.pool.resolve(*name).to_string());
         self.emit(TraceEvent::Init {
             location: destination.clone(),
             value: value.clone(),
@@ -447,7 +448,7 @@ impl<'a> WalkerEvaluator<'a> {
         let value = self.evaluate_expression(value)?;
 
         // Define the destination
-        let destination = DataSource::Variable(*name);
+        let destination = DataSource::Variable(self.pool.resolve(*name).to_string());
 
         // Emit the trace event
         self.emit(TraceEvent::Assign {
@@ -611,7 +612,7 @@ impl<'a> WalkerEvaluator<'a> {
             if let ExprKind::Identifier(symbol) = obj_expr.node {
                 let update_array_tracked = TrackedValue {
                     value: new_array_value,
-                    source: DataSource::Variable(symbol),
+                    source: DataSource::Variable(self.pool.resolve(symbol).to_string()),
                 };
 
                 if !self.environment.borrow_mut().assign(&symbol, update_array_tracked) {
