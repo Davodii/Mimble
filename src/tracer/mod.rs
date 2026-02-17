@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{Value, evaluator::{DataSource, TrackedValue}};
+use crate::{evaluator::{DataSource, TrackedValue}};
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "kind")]

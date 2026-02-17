@@ -2,6 +2,10 @@ fn main() {
     // Create the interpreter
     let mut interpreter = mimble::Interpreter::new();
 
+    // Set up a console tracer
+    let console_tracer: Box<mimble::tracer::ConsoleTracer> = Box::new(mimble::tracer::ConsoleTracer);
+    interpreter.set_tracer(console_tracer);
+
     // Start REPL
     println!("Welcome to the Mimble REPL!");
     use std::io::{self, Write};
