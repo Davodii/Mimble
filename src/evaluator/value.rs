@@ -51,7 +51,7 @@ pub enum Value {
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
-#[serde(tag = "type")]
+#[serde(tag = "kind")]
 pub enum FunctionType {
     Native(String),
     // User {
