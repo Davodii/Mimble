@@ -1,4 +1,4 @@
-use crate::{common::{Type}, parser::{LiteralValue, Stmt}};
+use crate::{common::{Type}, parser::LiteralValue};
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(tag = "kind", content = "value")]
@@ -28,6 +28,7 @@ pub enum DataSource {
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TrackedValue {
     pub value: Value,
     pub source: DataSource,
