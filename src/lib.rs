@@ -3,54 +3,39 @@
 mod common;
 mod lexer;
 mod parser;
-mod evaluator;
+pub mod evaluator;
 pub mod tracer;
+mod stdlib;
 
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use common::StringPool;
+use common::SymbolPool;
 pub use common::DiagnosticsSink;
-pub use evaluator::Value;
-pub use evaluator::Environment;
 
-use crate::evaluator::TrackedValue;
-
-pub type NativeFn = fn(Vec<TrackedValue>) -> TrackedValue;
-
-#[derive(Clone)]
-pub struct NativeRegistry {
-    pub functions: HashMap<String, NativeFn>,
-}
+use crate::{common::context::Context, evaluator::{environment::Environment, value::Value}};
 
 pub struct Interpreter {
-    pool: StringPool,
-    sink: DiagnosticsSink,
-    globals: Environment,
+    ctx: Context,
+    globals: Rc<RefCell<Environment>>,
     tracer: Option<Box<dyn tracer::Tracer>>,
-    registry: NativeRegistry,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
-        let mut registry = HashMap::new();
+        // Build the context
+        let context = Context::new();
 
-        // len(arr)
-        registry.insert("len".to_string(), (|args: Vec<TrackedValue>|  {
-            if let Some(TrackedValue { 
-                value: Value::Array { id: _, elements, element_type: _ }, 
-                source: _ 
-            }) = args.get(0) {
-                TrackedValue::from(Value::Integer(elements.len() as i64))
-            } else { TrackedValue::from(Value::Nil) }
-        }) as fn(Vec<TrackedValue>) -> TrackedValue);
-
+        // Build the standard library
+        let globals_builder = stdlib::GlobalsBuilder::new(context.clone());
+        let globals = globals_builder
+            .with_array()
+            .with_std_io()
+            .build();
 
         Interpreter {
-            pool: StringPool::new(),
-            sink: DiagnosticsSink::new(),
-            globals: Environment::new(), // TODO: have a way to change the globals in code
+            ctx: context,
+            globals: globals,
             tracer: None,
-            registry: NativeRegistry { functions: registry },
         }
     }
 
@@ -63,27 +48,24 @@ impl Interpreter {
     }
 
     pub fn run(&mut self, code: &str) -> Result<Value, ()> {
-
-        let mut lexer: lexer::Lexer = lexer::Lexer::new(code, &mut self.pool, &mut self.sink );
+        let mut lexer: lexer::Lexer = lexer::Lexer::new(code, self.ctx.clone());
         let tokens = lexer.lex();
 
         // Parse AST
-        let mut parser = parser::Parser::new(tokens, &mut self.pool, &mut self.sink);
+        let mut parser = parser::Parser::new(tokens, self.ctx.clone());
         let ast = parser.parse();
 
         // TODO: perform semantic analysis here
 
-        if self.sink.has_errors() {
+        if self.ctx.diagnostics.borrow().has_errors() {
             return Err(());
         }
 
         // Interpreter
         let mut evaluator = evaluator::WalkerEvaluator::new(
-            // &mut self.globals, 
-            &mut self.pool, 
-            &mut self.sink,
-            self.tracer.take(),
-            self.registry.clone(),
+            self.globals.clone(), 
+            self.ctx.clone(),
+            self.tracer.take()
         );
         let result = evaluator.interpret(ast);
 
@@ -91,16 +73,16 @@ impl Interpreter {
         self.tracer = evaluator.take_tracer();
 
         match result {
-            Ok(value) => Ok(value.value), // Unwrap TrackedValue to Value
+            Ok(tracked) => Ok(tracked.value), // Unwrap TrackedValue to Value
             Err(_) => return Err(()),
         }
     }
 
     pub fn emit_diagnostics(&mut self, source: &str) {
-        self.sink.emit_all(source);
+        self.ctx.diagnostics.borrow().emit_all(source);
     }
 
     pub fn clear_diagnostics(&mut self) {
-        self.sink = DiagnosticsSink::new();
+        self.ctx.diagnostics.borrow_mut().clear();
     }
 }

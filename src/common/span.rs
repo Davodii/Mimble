@@ -8,7 +8,7 @@ pub struct Span {
     pub column: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Spanned<T> {
     pub node: T,
     pub span: crate::common::Span,

@@ -4,10 +4,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-type SharedEnv = Rc<RefCell<Environment>>;
-
 pub struct Environment {
-    pub parent: Option<SharedEnv>,
+    pub parent: Option<Rc<RefCell<Environment>>>,
     values: HashMap<Symbol, TrackedValue>,
     types: HashMap<Symbol, crate::common::Type>,
 }
@@ -21,11 +19,7 @@ impl Environment {
         }
     }
 
-    pub fn new_shared() -> SharedEnv {
-        Rc::new(RefCell::new(Self::new()))
-    }
-
-    pub fn extend(parent: SharedEnv) -> SharedEnv {
+    pub fn extend(parent: Rc<RefCell<Environment>>) -> Rc<RefCell<Environment>> {
         Rc::new(RefCell::new(Self {
             parent: Some(parent),
             values: HashMap::new(),
@@ -66,9 +60,8 @@ impl Environment {
     }
 
     pub fn define(&mut self, symbol: Symbol, value: TrackedValue) {
-        // TODO: unecessary cloning!
-        self.values.insert(symbol.clone(), value.clone());
-        self.types.insert(symbol.clone(), value.get_type().clone());
+        self.types.insert(symbol, value.get_type());
+        self.values.insert(symbol, value);
     }
 }
 

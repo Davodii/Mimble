@@ -74,4 +74,9 @@ impl DiagnosticsSink {
     pub fn has_errors(&self) -> bool {
         self.has_errors
     }
+
+    pub fn clear(&mut self) {
+        self.diagnostics.clear();
+        self.has_errors = false;
+    }
 }

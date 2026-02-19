@@ -1,9 +1,5 @@
 mod walker_evaluator;
-mod environment;
-mod value;
-// mod error;
+pub mod environment;
+pub mod value;
 
 pub use walker_evaluator::WalkerEvaluator;
-pub use value::{Value, TrackedValue, DataSource};
-// pub use error::RuntimeError;
-pub use environment::Environment;

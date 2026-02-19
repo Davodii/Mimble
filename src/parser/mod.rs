@@ -3,26 +3,25 @@ mod ast;
 #[cfg(test)]
 mod tests;
 
-use crate::common::{DiagnosticsSink, Span, StringPool, Type};
+use crate::common::context::Context;
+use crate::common::{Span, Type};
 use crate::lexer::{Token, TokenKind};
 
 pub use ast::{Stmt, Expr, LiteralValue, ExprKind, StmtKind};
-pub struct Parser<'a>{
+pub struct Parser {
     tokens: Vec<Token>,
-    pool: &'a mut StringPool,
-    sink: &'a mut DiagnosticsSink,
+    ctx: Context,
     current: usize,
 }
 
-impl<'a> Parser<'a> {
+impl Parser {
     pub fn new(
         tokens: Vec<Token>, 
-        pool: &'a mut StringPool,
-        sink: &'a mut DiagnosticsSink) -> Self {
+        ctx: Context
+    ) -> Self {
         Self { 
             tokens, 
-            pool, 
-            sink, 
+            ctx,
             current: 0 
         }
     }
@@ -62,7 +61,7 @@ impl<'a> Parser<'a> {
     }
 
     fn error(&mut self, span: Span, message: impl Into<String>) -> (){
-        self.sink.report(span, message, crate::common::Severity::Error);
+        self.ctx.diagnostics.borrow_mut().report(span, message, crate::common::Severity::Error);
     }
 
     fn advance(&mut self) -> Token {
@@ -305,8 +304,7 @@ impl<'a> Parser<'a> {
             TokenKind::True => self.make_expr(ExprKind::Literal(LiteralValue::Boolean(true)), span),
             TokenKind::False => self.make_expr(ExprKind::Literal(LiteralValue::Boolean(false)), span),
             TokenKind::StringLiteral(val) => {
-                let s = self.pool.resolve(val).to_string();
-                self.make_expr(ExprKind::Literal(LiteralValue::String(s)), span)
+                self.make_expr(ExprKind::Literal(LiteralValue::String(val)), span)
             },
             // Identifiers and function calls
             TokenKind::Identifier(val) => {

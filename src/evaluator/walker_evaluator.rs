@@ -3,22 +3,21 @@ use std::rc::Rc;
 
 use super::environment::Environment;
 use super::value::Value;
-use crate::NativeRegistry;
-use crate::evaluator::DataSource;
-use crate::evaluator::value::TrackedValue;
+use crate::common::context::Context;
+use crate::evaluator::value::{DataSource, FunctionType, TrackedValue};
 use crate::parser::{Stmt, StmtKind, Expr, ExprKind};
 
-use crate::common::{DiagnosticsSink, Span, StringPool, Symbol};
+use crate::common::{DiagnosticsSink, Span, SymbolPool, Symbol};
 use crate::lexer::TokenKind;
 use crate::tracer::{TraceEvent, Tracer};
 
-#[derive(Copy, Clone)]
-enum BinOpKind {
-    Numeric,
-    NumericOrStringConcat,
-    Equality,
-    Ordering,
-}
+// #[derive(Copy, Clone)]
+// enum BinOpKind {
+//     Numeric,
+//     NumericOrStringConcat,
+//     Equality,
+//     Ordering,
+// }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum NumericKind {
@@ -82,9 +81,15 @@ where
 
 fn concat(lhs: Value, rhs: Value) -> Result<Value, ()> {
     match (lhs, rhs) {
-        (Value::String(a), Value::String(b)) => Ok(Value::String(a + &b)),
-        (Value::String(a), b) => Ok(Value::String(a + &b.to_string())),
-        (a, Value::String(b)) => Ok(Value::String(a.to_string() + &b)),
+        (Value::String(a), Value::String(b)) => {
+            Ok(Value::String(a + &b))
+        },
+        (Value::String(a), b) => {
+            Ok(Value::String(a + &b.to_string()))
+        },
+        (a, Value::String(b)) => {
+            Ok(Value::String(a.to_string() + &b))
+        },
         _ => Err(()),
     }
 }
@@ -142,29 +147,23 @@ fn eval_binop(op: TokenKind, lhs: Value, rhs: Value) -> Result<Value, ()> {
         _ => Err(()),
     }
 }
-pub struct WalkerEvaluator<'a> {
+pub struct WalkerEvaluator {
     // fields omitted
-    environment: Rc<RefCell<Environment>>,
-    pool: &'a mut StringPool,
-    sink: &'a mut DiagnosticsSink,
+    env: Rc<RefCell<Environment>>,
+    ctx: Context,
     tracer: Option<Box<dyn Tracer>>,
-    registry: NativeRegistry,
     next_uid: usize,
 }
-impl<'a> WalkerEvaluator<'a> {
+impl WalkerEvaluator {
     pub fn new(
-        // env: &'a mut Environment, 
-        pool: &'a mut StringPool, 
-        sink: &'a mut DiagnosticsSink,
+        env: Rc<RefCell<Environment>>,
+        ctx: Context,
         tracer: Option<Box<dyn Tracer>>,
-        registry: NativeRegistry,
     ) -> Self {
         Self {
-            environment: Rc::new(RefCell::new(Environment::new())),
-            pool,
-            sink,
+            env,
+            ctx,
             tracer,
-            registry: registry.clone(),
             next_uid: 0,
         }
     }
@@ -206,7 +205,7 @@ impl<'a> WalkerEvaluator<'a> {
     }
 
     fn error(&mut self, span: Span, message: impl Into<String>){
-        self.sink.report(
+        self.ctx.diagnostics.borrow_mut().report(
             span, 
             message.into(),
             crate::common::Severity::Error,
@@ -224,8 +223,7 @@ impl<'a> WalkerEvaluator<'a> {
             StmtKind::If { cond, then, else_branch } => {
                 self.evaluate_if(cond, then, else_branch)
             }
-
-            // TODO: add the other statement kinds
+            _ => todo!("Handle other statement kinds"),
         }
     }
 
@@ -291,17 +289,20 @@ impl<'a> WalkerEvaluator<'a> {
     }
 
     fn evaluate_block(&mut self, statements: &Vec<Stmt>) -> Result<TrackedValue, ()>{
-        // Begina a new scope
-        let previous = self.environment.clone();
-        self.environment = Environment::extend(previous.clone());
+        // Save the current scope
+        let previous = self.env.clone();
 
+        // Create a nested scope
+        self.env = Environment::extend(previous.clone());
+
+        // Execute the statements
         let mut last_value = TrackedValue::from(Value::Nil);
         for stmt in statements {
             last_value = self.execute_statement(stmt)?;
         }
 
-        // End the scope
-        self.environment = previous;
+        // Pop the scope
+        self.env = previous;
 
         Ok(last_value)
     }    
@@ -319,12 +320,12 @@ impl<'a> WalkerEvaluator<'a> {
             ExprKind::Identifier(name) => {
                 // Check the environment for the variable
                 // TODO: this problem should be resolved by the resolver pass
-                if let Some(value) = self.environment.borrow().get(name) {
+                if let Some(value) = self.env.borrow().get(name) {
                     Ok(value)
                 } else {
                     self.error(
                         span, 
-                        format!("undefined variable '{}' found", self.pool.resolve(*name))
+                        format!("undefined variable '{}' found", self.ctx.pool.borrow().resolve(*name))
                     );
                     Err(())
                 }
@@ -422,7 +423,7 @@ impl<'a> WalkerEvaluator<'a> {
         }
 
         // Define the destination identity
-        let destination = DataSource::Variable(self.pool.resolve(*name).to_string());
+        let destination = DataSource::Variable(self.ctx.pool.borrow().resolve(*name).to_string());
         self.emit(TraceEvent::Init {
             location: destination.clone(),
             value: value.clone(),
@@ -434,7 +435,7 @@ impl<'a> WalkerEvaluator<'a> {
             source: destination,
         };
 
-        self.environment.borrow_mut().define(name.clone(), tracked_for_env.clone());
+        self.env.borrow_mut().define(name.clone(), tracked_for_env.clone());
         Ok(value)
     }
 
@@ -448,7 +449,7 @@ impl<'a> WalkerEvaluator<'a> {
         let value = self.evaluate_expression(value)?;
 
         // Define the destination
-        let destination = DataSource::Variable(self.pool.resolve(*name).to_string());
+        let destination = DataSource::Variable(self.ctx.pool.borrow().resolve(*name).to_string());
 
         // Emit the trace event
         self.emit(TraceEvent::Assign {
@@ -464,14 +465,14 @@ impl<'a> WalkerEvaluator<'a> {
             source: destination,
         };
 
-        if self.environment.borrow_mut().assign(name, updated_val.clone()) {
+        if self.env.borrow_mut().assign(name, updated_val.clone()) {
             Ok(updated_val)
         } else {
             self.error(
                 span, 
                 format!(
                     "undefined variable '{}' found", 
-                    self.pool.resolve(*name)
+                    self.ctx.pool.borrow().resolve(*name)
                 )
             );
             Err(())
@@ -612,15 +613,15 @@ impl<'a> WalkerEvaluator<'a> {
             if let ExprKind::Identifier(symbol) = obj_expr.node {
                 let update_array_tracked = TrackedValue {
                     value: new_array_value,
-                    source: DataSource::Variable(self.pool.resolve(symbol).to_string()),
+                    source: DataSource::Variable(self.ctx.pool.borrow().resolve(symbol).to_string()),
                 };
 
-                if !self.environment.borrow_mut().assign(&symbol, update_array_tracked) {
+                if !self.env.borrow_mut().assign(&symbol, update_array_tracked) {
                     self.error(
                         obj_expr.span, 
                         format!(
                             "undefined variable '{}' found", 
-                            self.pool.resolve(symbol)
+                            self.ctx.pool.borrow().resolve(symbol)
                         )
                     );
                     return Err(());
@@ -639,27 +640,40 @@ impl<'a> WalkerEvaluator<'a> {
     
     fn function_call(&mut self, callee: &Expr, arguments: &[Expr]) -> Result<TrackedValue, ()> {
         if let Expr { node: ExprKind::Identifier(func_name), span: _ } = callee {
-            // Only support native functions for now
-            let name = self.pool.resolve(*func_name).to_string();
+            let func = self.env.borrow().get(func_name);
 
-            let func = self.registry.functions.get(&name).copied();
+            if let Some(TrackedValue { value: Value::Function(func_type), source: _ }) = func {
+                match func_type {
+                    FunctionType::Native { name: _, return_type,func } => {
+                        // Evaluate arguments
+                        let mut arg_values = Vec::new();
+                        for arg_expr in arguments {
+                            let arg_value = self.evaluate_expression(arg_expr)?;
+                            arg_values.push(arg_value);
+                        }
 
-            if let Some(native_fn) = func {
-                // Evaluate arguments
-                let mut arg_values = Vec::new();
-                for arg_expr in arguments {
-                    let arg_value = self.evaluate_expression(arg_expr)?;
-                        arg_values.push(arg_value);
+                        // Call the native function
+                        match func(arg_values) {
+                            Ok(result) => Ok(result),
+                            Err(err_message) => {
+                                self.error(
+                                    callee.span, 
+                                    format!("Error in native function call: {}", err_message)
+                                );
+                                Err(())
+                            }
+                        }
+                    },
+                    FunctionType::User { name, return_type, params, body } => {
+                        todo!("Implement user-defined function calls")
+                    },
                 }
-
-                let result = native_fn(arg_values);
-                Ok(result)
             } else {
                 self.error(
                     callee.span,
                     format!(
                         "undefined function '{}' called", 
-                        self.pool.resolve(*func_name)
+                        self.ctx.pool.borrow().resolve(*func_name)
                     )
                 );
                 Err(())

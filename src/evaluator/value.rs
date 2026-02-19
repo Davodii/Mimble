@@ -1,4 +1,4 @@
-use crate::{common::{Type}, parser::LiteralValue};
+use crate::{common::{Symbol, Type}, parser::{LiteralValue, Stmt}, stdlib::NativeFn};
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(tag = "kind", content = "value")]
@@ -22,6 +22,9 @@ pub enum DataSource {
 
     /// Just the number 10 or string "hello"
     Literal,
+
+    /// A function defined in Rust and exposed to mimble code
+    Native,
 
     /// Fallback for initial state
     None, // or Unknown
@@ -51,14 +54,44 @@ pub enum Value {
     Nil,
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[derive(Clone, serde::Serialize)]
 #[serde(tag = "kind", content = "value")]
 pub enum FunctionType {
-    Native(String),
-    // User {
-    //     params: Vec<String>,
-    //     body: Vec<Stmt>,
-    // }
+    Native {
+        name: String,
+        return_type: Type,
+        #[serde(skip)]
+        func: NativeFn,
+    },
+    /// Function defined in mimble code
+    User {
+        name: String,
+        return_type: Type,
+        params: Vec<String>,
+        #[serde(skip)]
+        body: Vec<Stmt>,
+    }
+}
+
+impl std::fmt::Debug for FunctionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FunctionType::Native { name, .. } => write!(f, "NativeFunction({})", name),
+            FunctionType::User { name, params, .. } => write!(f, "UserFunction({}, params: {:?})", name, params),
+        }
+    }
+}
+
+impl PartialEq for FunctionType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Native { name: n1, return_type: rt1, .. }, Self::Native { name: n2, return_type: rt2, .. }) => n1 == n2 && rt1 == rt2,
+            (Self::User { name: n1, params: p1, body: b1, return_type: rt1 }, Self::User { name: n2, params: p2, body: b2, return_type: rt2 }) => {
+                n1 == n2 && p1 == p2 && b1 == b2 && rt1 == rt2
+            }
+            _ => false,
+        }
+    }
 }
 
 impl From<LiteralValue> for TrackedValue {
@@ -100,7 +133,21 @@ impl TrackedValue {
             Value::Boolean(_) => Type::Boolean,
             Value::Nil => Type::Nil,
             Value::Array { id: _, elements: _, element_type } => Type::Array(Box::new(element_type.clone())),
-            Value::Function(function_type) => todo!(),
+            Value::Function(function_type) => {
+                match function_type {
+                    FunctionType::Native { name: _, return_type, func: _ } => return_type.clone(),
+                    FunctionType::User { name: _, params: _, body: _, return_type } => return_type.clone(),
+                    _ => todo!(),
+                }
+            },
+            _ => todo!(),
+        }
+    }
+
+    pub fn nil() -> Self {
+        TrackedValue {
+            value: Value::Nil,
+            source: DataSource::None,
         }
     }
 }
@@ -117,7 +164,8 @@ impl std::fmt::Display for Value {
                 let elements: Vec<String> = elements.iter().map(|v| format!("{}", v)).collect();
                 write!(f, "[{}]", elements.join(", "))
             },
-            Value::Function(function_type) => todo!(),
+            // Value::Function(function_type) => todo!(),
+            _ => todo!(),
         }
     }
 }

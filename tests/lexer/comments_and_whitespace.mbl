@@ -1,0 +1,12 @@
+# expect: 42
+# This is a comment
+    # This is an indented comment
+let x = 40
+
+# Lots of blank lines
+
+
+
+
+let y = 2
+x + y

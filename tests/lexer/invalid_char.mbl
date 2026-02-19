@@ -1,0 +1,2 @@
+# error: lexer
+let bad_var = @

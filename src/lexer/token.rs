@@ -42,7 +42,7 @@ pub enum TokenKind {
     FloatLiteral(f64),
     True,
     False,
-    StringLiteral(crate::common::Symbol),
+    StringLiteral(String),
     Identifier(crate::common::Symbol),
     
     Error,  

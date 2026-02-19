@@ -1,0 +1,4 @@
+# expect: 5
+# Subtraction should be left-associative: (10 - 3) - 2 = 5
+# If it is right-associative, it would evaluate to 10 - (3 - 2) = 9
+10 - 3 - 2

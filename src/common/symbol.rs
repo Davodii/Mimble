@@ -1,12 +1,18 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
 pub struct Symbol(pub usize);
 
-pub struct StringPool {
+impl std::fmt::Display for Symbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Symbol({})", self.0)
+    }
+}
+
+pub struct SymbolPool {
     strings: Vec<String>,
     map: std::collections::HashMap<String, Symbol>,
 }
 
-impl StringPool {
+impl SymbolPool {
     pub fn new() -> Self {
         Self {
             strings: Vec::new(),
