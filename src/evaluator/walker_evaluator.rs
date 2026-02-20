@@ -7,17 +7,9 @@ use crate::common::context::Context;
 use crate::evaluator::value::{DataSource, FunctionType, TrackedValue};
 use crate::parser::{Stmt, StmtKind, Expr, ExprKind};
 
-use crate::common::{DiagnosticsSink, Span, SymbolPool, Symbol};
+use crate::common::{Span, Symbol};
 use crate::lexer::TokenKind;
 use crate::tracer::{TraceEvent, Tracer};
-
-// #[derive(Copy, Clone)]
-// enum BinOpKind {
-//     Numeric,
-//     NumericOrStringConcat,
-//     Equality,
-//     Ordering,
-// }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum NumericKind {
@@ -223,7 +215,7 @@ impl WalkerEvaluator {
             StmtKind::If { cond, then, else_branch } => {
                 self.evaluate_if(cond, then, else_branch)
             }
-            _ => todo!("Handle other statement kinds"),
+            // _ => todo!("Handle other statement kinds"),
         }
     }
 
@@ -644,7 +636,7 @@ impl WalkerEvaluator {
 
             if let Some(TrackedValue { value: Value::Function(func_type), source: _ }) = func {
                 match func_type {
-                    FunctionType::Native { name: _, return_type,func } => {
+                    FunctionType::Native { name: _, return_type: _,func } => {
                         // Evaluate arguments
                         let mut arg_values = Vec::new();
                         for arg_expr in arguments {
@@ -664,7 +656,7 @@ impl WalkerEvaluator {
                             }
                         }
                     },
-                    FunctionType::User { name, return_type, params, body } => {
+                    FunctionType::User { name: _, return_type: _, params: _, body: _ } => {
                         todo!("Implement user-defined function calls")
                     },
                 }

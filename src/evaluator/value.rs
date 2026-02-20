@@ -1,4 +1,4 @@
-use crate::{common::{Symbol, Type}, parser::{LiteralValue, Stmt}, stdlib::NativeFn};
+use crate::{common::Type, parser::{LiteralValue, Stmt}, stdlib::NativeFn};
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(tag = "kind", content = "value")]
@@ -137,10 +137,10 @@ impl TrackedValue {
                 match function_type {
                     FunctionType::Native { name: _, return_type, func: _ } => return_type.clone(),
                     FunctionType::User { name: _, params: _, body: _, return_type } => return_type.clone(),
-                    _ => todo!(),
+                    // _ => todo!(),
                 }
             },
-            _ => todo!(),
+            // _ => todo!(),
         }
     }
 

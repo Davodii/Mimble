@@ -7,9 +7,8 @@ pub mod evaluator;
 pub mod tracer;
 mod stdlib;
 
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
-use common::SymbolPool;
 pub use common::DiagnosticsSink;
 
 use crate::{common::context::Context, evaluator::{environment::Environment, value::Value}};

@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use crate::common::{SymbolPool, Type};
+use crate::common::Type;
 use crate::Value;
 use crate::common::context::Context;
 use crate::evaluator::value::{FunctionType, TrackedValue, DataSource};
