@@ -145,6 +145,7 @@ pub struct WalkerEvaluator {
     ctx: Context,
     tracer: Option<Box<dyn Tracer>>,
     next_uid: usize,
+    break_hit: bool,
 }
 impl WalkerEvaluator {
     pub fn new(
@@ -157,6 +158,7 @@ impl WalkerEvaluator {
             ctx,
             tracer,
             next_uid: 0,
+            break_hit: false,
         }
     }
 
@@ -225,9 +227,13 @@ impl WalkerEvaluator {
         body: &Box<Stmt>
     ) -> Result<TrackedValue, ()> {
         loop {
+            if self.break_hit {
+                self.break_hit = false;
+                break;
+            }
+
             let cond_value = self.evaluate_expression(cond)?;
 
-            // TODO: handle break statements
             let condition = match cond_value.value {
                 Value::Boolean(b) => b,
                 _ => {

@@ -71,6 +71,8 @@ pub enum StmtKind {
         type_annotation: Option<Type>, 
         initializer: Box<Expr> 
     },
+    // Break,
+    // Continue,
     // TODO: FuncDeclaration { name: Token, params: Vec<(Token, Option<TokenKind>)>, return_type: Option<TokenKind>, body: Box<Stmt> },
 }
 

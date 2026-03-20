@@ -46,6 +46,10 @@ impl Interpreter {
         self.tracer.take()
     }
 
+    pub fn diagnotics(&self) -> Rc<RefCell<DiagnosticsSink>> {
+        self.ctx.diagnostics.clone()
+    }
+
     pub fn run(&mut self, code: &str) -> Result<Value, ()> {
         let mut lexer: lexer::Lexer = lexer::Lexer::new(code, self.ctx.clone());
         let tokens = lexer.lex();
