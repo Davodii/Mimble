@@ -36,12 +36,18 @@ impl SymbolPool {
         &self.strings[symbol.0]
     }
 
-    // pub fn remove(&mut self, symbol: Symbol) {
-    //     if symbol.0 < self.strings.len() {
-    //         let s = &self.strings[symbol.0];
-    //         self.map.remove(s);
-    //         // Note: This does not remove the string from the `strings` vector to keep indices valid.
-    //         // In a more complex implementation, you might want to handle this differently.
-    //     }
-    // }
+    pub fn contains(&self, s: &str) -> bool {
+        self.map.contains_key(s)
+    }
+
+    pub fn get(&self, s: &str) -> Option<Symbol> {
+        self.map.get(s).cloned()
+    }
+
+    pub fn print_contents(&self) {
+        println!("SymbolPool contents:");
+        for (i, s) in self.strings.iter().enumerate() {
+            println!("  Symbol({}): '{}'", i, s);
+        }
+    }
 }

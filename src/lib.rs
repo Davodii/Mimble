@@ -3,6 +3,7 @@
 mod common;
 mod lexer;
 mod parser;
+mod analyser;
 pub mod evaluator;
 pub mod tracer;
 mod stdlib;
@@ -58,8 +59,17 @@ impl Interpreter {
         let mut parser = parser::Parser::new(tokens, self.ctx.clone());
         let ast = parser.parse();
 
-        // TODO: perform semantic analysis here
+        // Check for lexer and parser errors before proceeding to analysis
+        if self.ctx.diagnostics.borrow().has_errors() {
+            return Err(());
+        }
 
+        // Semantic analysis
+        let mut analyser = analyser::Analyser::new(self.ctx.clone());
+        analyser.seed_from_environment(&self.globals.borrow());
+        analyser.analyse(&ast)?;
+
+        // Check for analysis errors before proceeding to interpretation
         if self.ctx.diagnostics.borrow().has_errors() {
             return Err(());
         }

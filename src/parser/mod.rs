@@ -4,7 +4,7 @@ mod ast;
 mod tests;
 
 use crate::common::context::Context;
-use crate::common::{Span, Type};
+use crate::common::{Span, Symbol, Type};
 use crate::lexer::{Token, TokenKind};
 
 pub use ast::{Stmt, Expr, LiteralValue, ExprKind, StmtKind};
@@ -156,7 +156,7 @@ impl Parser {
                 _ => {
                     self.error(
                         expr.span,
-                        format!("Invalid assignment target: {}",expr.node.type_to_string()),
+                        format!("Invalid assignment target: {}",expr.node.kind_to_string()),
                     );
                     return Err(());
                 }
@@ -380,6 +380,8 @@ impl Parser {
             self.declaration()
         } else if self.check(TokenKind::Do) {
             self.block()
+        } else if self.matches(TokenKind::Func) {
+            self.func_declaration()
         } else {
             // fallback: expression statement
             let expr = self.expression()?;
@@ -389,6 +391,67 @@ impl Parser {
                 span: span,
             })
         }
+    }
+
+    fn func_declaration(&mut self) -> Result<Stmt, ()> {
+        let name = Box::new(self.consume_identifier("Expected a function name.")?);
+        let start = name.span.clone();
+
+        let symbol = if let TokenKind::Identifier(sym) = name.kind {
+            sym
+        } else {
+            return Err(());
+        };
+
+        self.consume(TokenKind::LeftParen, "Expected '(' after function name")?;
+
+        // Parse the parameters
+        let mut params: Vec<(Symbol, Option<Type>)> = Vec::new();
+        if !self.check(TokenKind::RightParen) {
+            loop {
+                let param_name_token = self.consume_identifier("Expected parameter name")?;
+                let param_symbol = if let TokenKind::Identifier(sym) = param_name_token.kind {
+                    sym
+                } else {
+                    return Err(());
+                };
+
+                // Check for optional type annotation
+                let param_type = if self.matches(TokenKind::Colon) {
+                    Some(self.parse_type()?)
+                } else {
+                    None
+                };
+
+                params.push((param_symbol, param_type));
+
+                if !self.matches(TokenKind::Comma) { break; }
+            }
+        }
+
+        self.consume(TokenKind::RightParen, "Expected ')' after function parameters")?;
+
+        // Optional return type annotation
+        let return_type = if self.matches(TokenKind::Colon) {
+            // Optional return type annotation
+            Some(self.parse_type()?)
+        } else {
+            // TODO: if no return type annotation, we should infer it after parsing the body
+            None
+        };
+
+        let body = Box::new(self.block()?);
+        let end = start.merge(body.span);
+
+        Ok(Stmt {
+            node: StmtKind::FuncDeclaration { 
+                name: symbol, 
+                params: params, 
+                return_type: return_type, 
+                body: body 
+            },
+            span: end
+        })
     }
 
     fn if_stmt(&mut self) -> Result<Stmt, ()> {

@@ -2,7 +2,6 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{DiagnosticsSink, common::SymbolPool};
 
-
 #[derive(Clone)]
 pub struct Context {
     pub pool: Rc<RefCell<SymbolPool>>,

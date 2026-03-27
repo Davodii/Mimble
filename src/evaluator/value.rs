@@ -1,10 +1,10 @@
-use crate::{common::Type, parser::{LiteralValue, Stmt}, stdlib::NativeFn};
+use crate::{common::{Symbol, Type}, parser::{LiteralValue, Stmt}, stdlib::NativeFn};
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(tag = "kind", content = "value")]
 pub enum DataSource {
     /// A standalone variable (e.g. let x = ...)
-    Variable(String),
+    Variable(Symbol),
 
     /// A specific slot in an array (e.g. arr[2])
     /// Tracks the ID of the array and the index accessed
@@ -58,18 +58,18 @@ pub enum Value {
 #[serde(tag = "kind", content = "value")]
 pub enum FunctionType {
     Native {
-        name: String,
+        name: Symbol,
         return_type: Type,
         #[serde(skip)]
         func: NativeFn,
     },
     /// Function defined in mimble code
     User {
-        name: String,
+        name: Symbol,
         return_type: Type,
-        params: Vec<String>,
+        params: Vec<(Symbol, Option<Type>)>,
         #[serde(skip)]
-        body: Vec<Stmt>,
+        body: Box<Stmt>,
     }
 }
 
@@ -164,7 +164,21 @@ impl std::fmt::Display for Value {
                 let elements: Vec<String> = elements.iter().map(|v| format!("{}", v)).collect();
                 write!(f, "[{}]", elements.join(", "))
             },
-            // Value::Function(function_type) => todo!(),
+            Value::Function(function_type) => {
+                match function_type {
+                    FunctionType::Native { name, .. } => write!(f, "<native function {}>", name),
+                    FunctionType::User { name, params, .. } => {
+                        let params: Vec<String> = params.iter().map(|(n, t)| {
+                            if let Some(t) = t {
+                                format!("{}: {}", n, t)
+                            } else {
+                                format!("{}", n)
+                            }
+                        }).collect();
+                        write!(f, "<function {}({})>", name, params.join(", "))
+                    },
+                }
+            },
             _ => todo!(),
         }
     }

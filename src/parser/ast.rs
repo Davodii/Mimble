@@ -62,7 +62,6 @@ pub enum LiteralValue {
 #[derive(Debug, Clone)]
 pub enum StmtKind {
     ExprStmt(Box<Expr>),
-    // PrintStmt(Box<Expr>),
     If { cond: Box<Expr>, then: Box<Stmt>, else_branch: Option<Box<Stmt>> },
     While { cond: Box<Expr>, body: Box<Stmt> },
     Block{ stmts: Vec<Stmt> },
@@ -73,12 +72,17 @@ pub enum StmtKind {
     },
     // Break,
     // Continue,
-    // TODO: FuncDeclaration { name: Token, params: Vec<(Token, Option<TokenKind>)>, return_type: Option<TokenKind>, body: Box<Stmt> },
+    FuncDeclaration { 
+        name: Symbol, // Identifier
+        params: Vec<(Symbol, Option<Type>)>,  // Identifier, optional type annotation
+        return_type: Option<Type>, // Optional return type annotation
+        body: Box<Stmt> // Block
+    },
 }
 
 
 impl ExprKind {
-    pub fn type_to_string(&self) -> &'static str {
+    pub fn kind_to_string(&self) -> &'static str {
         match self {
             ExprKind::Binary { .. } => "binary expression",
             ExprKind::Unary { .. } => "unary expression",

@@ -1,0 +1,5 @@
+func test() do
+    print("called from a function")
+end
+
+test()

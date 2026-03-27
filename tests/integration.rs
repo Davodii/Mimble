@@ -37,6 +37,10 @@ fn run_test_assertion(file_path: &str, source: String) {
                 );
             }
             Err(_) => {
+                let diagnostics = interpreter.diagnotics();
+
+                diagnostics.borrow().emit_all(&source); // Emit diagnostics to help debug
+
                 // If it failed, print the diagnostics to help debug
                 panic!("Test {} failed, but expected value '{}'. Check diagnostics.", file_path, expected);
             }
@@ -89,4 +93,6 @@ macro_rules! generate_tests {
 
 generate_tests!("tests/lexer", test_lexer_scripts);
 generate_tests!("tests/parser", test_parser_scripts);
+generate_tests!("tests/analyser", test_analyser_scripts);
+
 generate_tests!("tests/evaluator", test_evaluator_scripts);

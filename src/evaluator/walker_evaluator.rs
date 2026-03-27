@@ -7,7 +7,7 @@ use crate::common::context::Context;
 use crate::evaluator::value::{DataSource, FunctionType, TrackedValue};
 use crate::parser::{Stmt, StmtKind, Expr, ExprKind};
 
-use crate::common::{Span, Symbol};
+use crate::common::{Span, Symbol, Type};
 use crate::lexer::TokenKind;
 use crate::tracer::{TraceEvent, Tracer};
 
@@ -216,9 +216,44 @@ impl WalkerEvaluator {
             StmtKind::While { cond, body } => self.evaluate_while(cond, body),
             StmtKind::If { cond, then, else_branch } => {
                 self.evaluate_if(cond, then, else_branch)
-            }
+            },
+            StmtKind::FuncDeclaration { name , params , return_type , body  } => {
+                self.evaluate_function_declaration(name, params, return_type, body)
+            },
             // _ => todo!("Handle other statement kinds"),
         }
+    }
+
+    fn evaluate_function_declaration(
+        &mut self, 
+        name: &Symbol, 
+        params: &Vec<(Symbol, Option<Type>)>, 
+        return_type: &Option<Type>, 
+        body: &Box<Stmt>
+    ) -> Result<TrackedValue, ()> {
+        // Add the parameters to the environment of the function body
+        for (ident, type_annotation) in params {
+            // We use Nil as a placeholder value since we only care about the type here
+            self.env.borrow_mut().define(*ident, TrackedValue {
+                value: Value::Nil,
+                source: DataSource::Variable(*ident),
+            });
+        }
+
+        let value = TrackedValue::from(Value::Function(FunctionType::User { 
+            name: name.clone(),
+            params: params.clone(),
+            return_type: // TODO: if no return type annotation, we should infer it after parsing the body
+                return_type.clone().unwrap_or(Type::Nil),
+            body: body.clone(),
+        }));
+
+        self.env.borrow_mut().define(
+            *name, 
+            value.clone()
+        );
+
+        Ok(value)
     }
 
     fn evaluate_while(
@@ -421,7 +456,7 @@ impl WalkerEvaluator {
         }
 
         // Define the destination identity
-        let destination = DataSource::Variable(self.ctx.pool.borrow().resolve(*name).to_string());
+        let destination = DataSource::Variable(*name);
         self.emit(TraceEvent::Init {
             location: destination.clone(),
             value: value.clone(),
@@ -437,6 +472,28 @@ impl WalkerEvaluator {
         Ok(value)
     }
 
+    fn execute_function_declaration(
+        &mut self, 
+        name: &Symbol, 
+        params: &Vec<(Symbol, Option<Type>)>, 
+        return_type: &Option<Type>, 
+        body: &Box<Stmt>
+    ) -> Result<TrackedValue, ()> {
+        let value = TrackedValue::from(Value::Function(FunctionType::User { 
+            name: name.clone(),
+            params: params.clone(),
+            return_type: return_type.clone().unwrap_or(Type::Nil),
+            body: body.clone(),
+        }));
+
+        self.env.borrow_mut().define(
+            name.clone(), 
+            value.clone()
+        );
+
+        Ok(value)
+    }
+
     fn execute_variable_assignment_statement(
         &mut self, 
         name: &Symbol, 
@@ -447,7 +504,7 @@ impl WalkerEvaluator {
         let value = self.evaluate_expression(value)?;
 
         // Define the destination
-        let destination = DataSource::Variable(self.ctx.pool.borrow().resolve(*name).to_string());
+        let destination = DataSource::Variable(*name);
 
         // Emit the trace event
         self.emit(TraceEvent::Assign {
@@ -611,7 +668,7 @@ impl WalkerEvaluator {
             if let ExprKind::Identifier(symbol) = obj_expr.node {
                 let update_array_tracked = TrackedValue {
                     value: new_array_value,
-                    source: DataSource::Variable(self.ctx.pool.borrow().resolve(symbol).to_string()),
+                    source: DataSource::Variable(symbol),
                 };
 
                 if !self.env.borrow_mut().assign(&symbol, update_array_tracked) {
@@ -662,8 +719,92 @@ impl WalkerEvaluator {
                             }
                         }
                     },
-                    FunctionType::User { name: _, return_type: _, params: _, body: _ } => {
-                        todo!("Implement user-defined function calls")
+                    FunctionType::User { name , return_type: _, params: _, body: _ } => {
+                        // we need to enter a new environment,
+                        // define the parameters in that environment with the argument values,
+                        // execute the body in that environment, and return the result
+
+                        // Get the function declaration based on the name
+                        let declaration_opt = self.env.borrow().get(&name);
+                        let declaration = if let Some(TrackedValue { value: Value::Function(func_type), source: _ }) = declaration_opt {
+                            if let FunctionType::User { name, return_type, params, body } =  func_type {
+                                (name, return_type, params, body)
+                            } else {
+                                self.error(
+                                    callee.span,
+                                    format!("'{}' is not a function", name)
+                                );
+                                return Err(());
+                            }
+                        } else {
+                            self.error(
+                                callee.span,
+                                format!("undefined function '{}' called", name)
+                            );
+                            return Err(());
+                        };
+
+
+                        let (name, return_type, params, body) = declaration;
+
+                        // Save the current scope
+                        let previous = self.env.clone();
+
+                        // Create a nested scope
+                        self.env = Environment::extend(previous.clone());
+
+                        // Assign the parameters to the environment
+                        for (i, param) in params.iter().enumerate() {
+                            let (param_name, param_type) = param;
+
+                            if i >= arguments.len() {
+                                self.error(
+                                    callee.span,
+                                    format!(
+                                        "not enough arguments provided for function '{}': expected {}, found {}",
+                                        name,
+                                        params.len(),
+                                        arguments.len()
+                                    )
+                                );
+                                return Err(());
+                            }
+
+                            let arg_expr = &arguments[i];
+                            let arg_value = self.evaluate_expression(arg_expr)?;
+
+                            // Check type compatibility
+                            if let Some(expected_type) = param_type {
+                                if arg_value.get_type() != *expected_type {
+                                    self.error(
+                                        arg_expr.span, 
+                                        format!(
+                                            "Type mismatch for parameter '{}': expected '{:?}', found '{:?}'",
+                                            param_name,
+                                            expected_type,
+                                            arg_value.get_type()
+                                        )
+                                    );
+                                    return Err(());
+                                }
+                            }
+
+                            self.env.borrow_mut().define(
+                                *param_name, 
+                                TrackedValue {
+                                    value: arg_value.value.clone(),
+                                    source: DataSource::Variable(param_name.clone()),
+                                }
+                            );
+                        }
+
+                        // Execute the body
+                        let last_value = self.execute_statement(&body)?;
+
+                        // Pop the scope
+                        self.env = previous;
+
+                        Ok(last_value)
                     },
                 }
             } else {

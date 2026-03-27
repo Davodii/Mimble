@@ -1,6 +1,5 @@
 // Lexer for the language
 mod token;
-mod error;
 
 pub use token::{Token, TokenKind};
 
@@ -239,12 +238,25 @@ impl<'a> Lexer<'a> {
         let kind = match lexeme {
             // Keywords
             "let" => TokenKind::Let,
+
+            // Blocks
             "do" => TokenKind::Do,
             "end" => TokenKind::End,
+
+            // Control flow
             "if" => TokenKind::If,
             "elif" => TokenKind::Elif,
             "else" => TokenKind::Else,
             "while" => TokenKind::While,
+            "for" => TokenKind::For,
+            "in" => TokenKind::In,
+            "by" => TokenKind::By,
+            "break" => TokenKind::Break,
+            "continue" => TokenKind::Continue,
+
+            // Functions
+            "func" => TokenKind::Func,
+            "return" => TokenKind::Return,
 
             // Operators
             "or" => TokenKind::Or,

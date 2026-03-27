@@ -1,0 +1,4 @@
+# error: semantic
+if true do
+    a = 20
+end

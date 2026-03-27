@@ -10,8 +10,10 @@ pub enum TokenKind {
     // Keywords
     Let, Integer, Float, Boolean, String, Do, End, 
     If, Elif, Else, While, 
-    // For, Break, Continue,
-    // In, By, Func, Return,
+    For, Break, Continue,
+    In, By, 
+    Func, Return,
+
     Or,                         // or
     And,                        // and
     Not,                        // not
@@ -80,18 +82,18 @@ impl std::fmt::Display for Token {
             TokenKind::Elif => write!(f, "elif"),
             TokenKind::Else => write!(f, "else"),
             TokenKind::While => write!(f, "while"),
-            // TokenKind::For => write!(f, "for"),
-            // TokenKind::In => write!(f, "in"),
-            // TokenKind::By => write!(f, "by"),
-            // TokenKind::Func => write!(f, "func"),
-            // TokenKind::Return => write!(f, "return"),
+            TokenKind::For => write!(f, "for"),
+            TokenKind::In => write!(f, "in"),
+            TokenKind::By => write!(f, "by"),
+            TokenKind::Func => write!(f, "func"),
+            TokenKind::Return => write!(f, "return"),
             TokenKind::Do => write!(f, "do"),
             TokenKind::End => write!(f, "end"),
             TokenKind::Or => write!(f, "or"),
             TokenKind::And => write!(f, "and"),
             TokenKind::Not => write!(f, "not"),
-            // TokenKind::Break => write!(f, "break"),
-            // TokenKind::Continue => write!(f, "continue"),
+            TokenKind::Break => write!(f, "break"),
+            TokenKind::Continue => write!(f, "continue"),
             _ => write!(f, "{:?}", self.kind),
         }
     }

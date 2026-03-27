@@ -28,7 +28,7 @@ impl GlobalsBuilder {
         let symbol = self.ctx.pool.borrow_mut().intern(name);
         let value = TrackedValue {
             value: Value::Function(FunctionType::Native {
-                name: name.to_string(),
+                name: symbol,
                 return_type,
                 func,
             }),

@@ -6,8 +6,8 @@ use std::cell::RefCell;
 
 pub struct Environment {
     pub parent: Option<Rc<RefCell<Environment>>>,
-    values: HashMap<Symbol, TrackedValue>,
-    types: HashMap<Symbol, crate::common::Type>,
+    pub values: HashMap<Symbol, TrackedValue>,
+    pub types: HashMap<Symbol, crate::common::Type>,
 }
 
 impl Environment {
