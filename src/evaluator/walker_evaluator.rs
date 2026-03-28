@@ -460,28 +460,28 @@ impl WalkerEvaluator {
     fn execute_let_statement(
         &mut self, 
         name: &Symbol, 
-        type_annotation: &Option<crate::common::Type>, 
+        _type_annotation: &Option<crate::common::Type>, 
         initializer: &Box<Expr>
     ) -> Result<TrackedValue, ()> {
         // Evaluate the initializer expression
         let value = self.evaluate_expression(initializer)?;
 
-        // If we have a type annotation, check that the value matches the type
-        if let Some(expected_type) = type_annotation {
-            let value_type = value.get_type();
-            if &value_type != expected_type {
-                self.error(
-                    // TODO: change the span to incorporate the assignment aswell
-                    initializer.span, 
-                    format!(
-                        "Variable was declared with type '{}' but expression has type '{}'",
-                        expected_type,
-                        value_type
-                    ),
-                );
-                return Err(());
-            }
-        }
+        // // If we have a type annotation, check that the value matches the type
+        // if let Some(expected_type) = type_annotation {
+        //     let value_type = value.get_type();
+        //     if &value_type != expected_type {
+        //         self.error(
+        //             // TODO: change the span to incorporate the assignment aswell
+        //             initializer.span, 
+        //             format!(
+        //                 "Variable was declared with type '{}' but expression has type '{}'",
+        //                 expected_type,
+        //                 value_type
+        //             ),
+        //         );
+        //         return Err(());
+        //     }
+        // }
 
         // Define the destination identity
         let destination = DataSource::Variable(*name);
@@ -499,28 +499,6 @@ impl WalkerEvaluator {
         self.env.borrow_mut().define(name.clone(), tracked_for_env.clone());
         Ok(value)
     }
-
-    // fn execute_function_declaration(
-    //     &mut self, 
-    //     name: &Symbol, 
-    //     params: &Vec<(Symbol, Option<Type>)>, 
-    //     return_type: &Option<Type>, 
-    //     body: &Box<Stmt>
-    // ) -> Result<TrackedValue, ()> {
-    //     let value = TrackedValue::from(Value::Function(FunctionType::User { 
-    //         name: name.clone(),
-    //         params: params.clone(),
-    //         return_type: return_type.clone().unwrap_or(Type::Nil),
-    //         body: body.clone(),
-    //     }));
-
-    //     self.env.borrow_mut().define(
-    //         name.clone(), 
-    //         value.clone()
-    //     );
-
-    //     Ok(value)
-    // }
 
     fn execute_variable_assignment_statement(
         &mut self, 
@@ -551,6 +529,7 @@ impl WalkerEvaluator {
         if self.env.borrow_mut().assign(name, updated_val.clone()) {
             Ok(updated_val)
         } else {
+            // TODO: analyser ensures this doesn't happen
             self.error(
                 span, 
                 format!(
@@ -773,7 +752,7 @@ impl WalkerEvaluator {
                         };
 
 
-                        let (name, _return_type, params, body) = declaration;
+                        let (_name, _return_type, params, body) = declaration;
 
                         // Save the current scope
                         let previous = self.env.clone();
