@@ -3,10 +3,10 @@
 use std::collections::HashMap;
 
 use crate::{
-    common::{Severity, Symbol, Type, context::Context}, evaluator::environment::Environment, lexer::TokenKind, parser::{Expr, Stmt, StmtKind}
+    common::{Severity, Span, Symbol, Type, context::Context}, evaluator::environment::Environment, lexer::TokenKind, parser::{Expr, Stmt, StmtKind}
 };
 
-// - [ ] Undefined variables
+// - [x] Undefined variables
 // - [ ] Type errors (e.g. adding a number to a string)
 // - [ ] Function call errors (e.g. wrong number of arguments, wrong argument types)
 // - [ ] Control flow errors (e.g. break/continue outside of loops, return outside of functions)
@@ -15,13 +15,20 @@ use crate::{
 pub struct Analyser {
     ctx: Context,
     scopes: Vec<HashMap<Symbol, Type>>,
+
+    current_function_return_type: Option<Type>, // for checking return statements
+    in_function: bool, // for checking return statements
+    loop_depth: usize, // for checking break/continue statements
 }
 
 impl Analyser {
     pub fn new(ctx: Context) -> Self {
         Self { 
             ctx,
-            scopes: Vec::new()
+            scopes: Vec::new(),
+            current_function_return_type: None,
+            in_function: false,
+            loop_depth: 0,
         }
     }
 
@@ -86,6 +93,9 @@ impl Analyser {
             StmtKind::Block { stmts } => self.analyse_block_stmt(stmts),
             StmtKind::LetStmt { name, type_annotation, initializer } => self.analyse_let_stmt(name, type_annotation, initializer),
             StmtKind::FuncDeclaration { name, params, return_type, body } => self.analyse_func_declaration(name, params, return_type, body),
+            StmtKind::Return { value } => self.analyse_return_stmt(value),
+            StmtKind::Break => self.analyse_break_stmt(&stmt.span),
+            StmtKind::Continue => self.analyse_continue_stmt(&stmt.span),
         }
     }
 
@@ -404,8 +414,14 @@ impl Analyser {
             return Err(());
         }
 
+        // Increment loop depth for checking break/continue statements
+        self.loop_depth += 1;
+
         // Analyse the body
         self.analyse_stmt(body)?;
+
+        // Decrement loop depth after analysing the loop
+        self.loop_depth -= 1;
 
         // TODO: can check for unreachable code after a while loop with a constant true condition, but that requires some form of constant folding which we haven't implemented yet
         // TODO: also check for break/continue statements
@@ -448,22 +464,14 @@ impl Analyser {
     }
 
     fn analyse_func_declaration(&mut self, name: &Symbol, params: &Vec<(Symbol, Option<Type>)>, return_type: &Option<Type>, body: &Stmt) -> Result<(), ()> {
-        todo!();
+        self.current_function_return_type = return_type.clone();
+        self.in_function = true;
         
-        // // Declare the function in the current scope with a placeholder type (e.g. "function")
-        // self.declare_variable(
-        //     name.clone(), 
-        //     Type::Function { 
-        //         param_types: Vec::new(), 
-        //         return_type: Box::new(Type::Nil) 
-        //     }
-        // )?;
-
         // Analyse the function body in a new scope where the parameters are declared
         self.enter_scope();
         for (param_name, param_type) in params {
             // If the parameter has a type annotation, use it. Otherwise, use a placeholder type
-            let ty = param_type.clone().unwrap_or(Type::Nil);
+            let ty = param_type.clone().unwrap_or(Type::Any);
             self.declare_variable(param_name.clone(), ty)?;
         }
 
@@ -471,8 +479,68 @@ impl Analyser {
         self.exit_scope();
 
         // After analysing the body, update the function's type in the current scope with the correct parameter and return types
+        // Declare the function in the current scope with a placeholder type (e.g. "function")
+        self.declare_variable(
+            name.clone(), 
+            Type::Function { 
+                param_types: params.iter().map(|(_, t)| t.clone().unwrap_or(Type::Any)).collect(), 
+                return_type: Box::new(self.current_function_return_type.clone().unwrap_or(Type::Any)) // TODO: we need to get the actual return type from the body analysis, which is a bit tricky. For now, we'll just leave it as "any".
+            }
+        )?;
+        
         // TODO: we need to get the actual parameter and return types from the body analysis, which is a bit tricky. For now, we'll just leave it as a placeholder.
         Ok(())
     }
 
+    fn analyse_return_stmt(&mut self, value: &Expr) -> Result<(), ()> {
+        if !self.in_function {
+            self.ctx.diagnostics.borrow_mut().report(
+                value.span,
+                "Return statement outside of function".to_string(),
+                Severity::Error
+            );
+            return Err(());
+        }
+
+        let ty = self.analyse_expression(value)?;
+        if let Some(ref expected_type) = self.current_function_return_type {
+            if &ty != expected_type && expected_type != &Type::Any && ty != Type::Any {
+                self.ctx.diagnostics.borrow_mut().report(
+                    value.span,
+                    format!("Type error: expected {}, found {}", expected_type, ty),
+                    Severity::Error
+                );
+                return Err(());
+            }
+        }
+
+        // update the current function's return type
+        self.current_function_return_type = Some(ty);
+
+        Ok(())
+    }
+    
+    fn analyse_break_stmt(&self, span: &Span) -> Result<(), ()> {
+        if self.loop_depth == 0 {
+            self.ctx.diagnostics.borrow_mut().report(
+                *span,
+                "Break statement outside of loop".to_string(),
+                Severity::Error
+            );
+            return Err(());
+        }
+        Ok(())
+    }
+    
+    fn analyse_continue_stmt(&self, span: &Span) -> Result<(), ()> {
+        if self.loop_depth == 0 {
+            self.ctx.diagnostics.borrow_mut().report(
+                *span,
+                "Continue statement outside of loop".to_string(),
+                Severity::Error
+            );
+            return Err(());
+        }
+        Ok(())
+    }
 }

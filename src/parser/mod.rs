@@ -382,6 +382,25 @@ impl Parser {
             self.block()
         } else if self.matches(TokenKind::Func) {
             self.func_declaration()
+        } else if self.matches(TokenKind::Return) {
+            let value = self.expression()?;
+            let span = self.previous().span.merge(value.span);
+            Ok(Stmt {
+                node: StmtKind::Return { value: Box::new(value) },
+                span,
+            })
+        } else if self.matches(TokenKind::Break) {
+            let span = self.previous().span;
+            Ok(Stmt {
+                node: StmtKind::Break,
+                span,
+            })
+        } else if self.matches(TokenKind::Continue) {
+            let span = self.previous().span;
+            Ok(Stmt {
+                node: StmtKind::Continue,
+                span,
+            })
         } else {
             // fallback: expression statement
             let expr = self.expression()?;

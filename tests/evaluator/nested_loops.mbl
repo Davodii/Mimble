@@ -1,0 +1,18 @@
+# expect: 9
+
+let a = 0
+let total = 0
+
+while a < 3 do
+    let b = 0
+    while b < 3 do
+        total = total + 1
+        if total == 6 do
+            break
+        end
+        b = b + 1
+    end
+    a = a + 1
+end
+
+total

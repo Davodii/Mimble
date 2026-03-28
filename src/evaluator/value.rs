@@ -25,6 +25,8 @@ pub enum DataSource {
     /// A function defined in Rust and exposed to mimble code
     Native,
 
+    Return,
+
     /// Fallback for initial state
     None, // or Unknown
 }

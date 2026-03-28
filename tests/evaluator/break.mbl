@@ -1,0 +1,10 @@
+# expect: 5
+let a = 0
+while a < 100 do
+    a = a + 1
+    if a == 5 do
+        break
+    end
+end
+
+a

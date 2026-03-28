@@ -146,6 +146,8 @@ pub struct WalkerEvaluator {
     tracer: Option<Box<dyn Tracer>>,
     next_uid: usize,
     break_hit: bool,
+    return_hit: bool,
+    continue_hit: bool,
 }
 impl WalkerEvaluator {
     pub fn new(
@@ -159,6 +161,8 @@ impl WalkerEvaluator {
             tracer,
             next_uid: 0,
             break_hit: false,
+            return_hit: false,
+            continue_hit: false,
         }
     }
 
@@ -220,8 +224,25 @@ impl WalkerEvaluator {
             StmtKind::FuncDeclaration { name , params , return_type , body  } => {
                 self.evaluate_function_declaration(name, params, return_type, body)
             },
-            // _ => todo!("Handle other statement kinds"),
+            StmtKind::Return { value } => self.evaluate_return(value),
+            StmtKind::Break => {
+                self.break_hit = true;
+                Ok(TrackedValue::from(Value::Nil))
+            },
+            StmtKind::Continue => {
+                self.continue_hit = true;
+                Ok(TrackedValue::from(Value::Nil))
+            },
         }
+    }
+
+    fn evaluate_return(&mut self, value: &Expr) -> Result<TrackedValue, ()> {
+        let return_value = self.evaluate_expression(value);
+        self.return_hit = true;
+        Ok(TrackedValue {
+            value: return_value?.value,
+            source: DataSource::Return,
+        })
     }
 
     fn evaluate_function_declaration(
@@ -244,7 +265,7 @@ impl WalkerEvaluator {
             name: name.clone(),
             params: params.clone(),
             return_type: // TODO: if no return type annotation, we should infer it after parsing the body
-                return_type.clone().unwrap_or(Type::Nil),
+                return_type.clone().unwrap_or(Type::Any),
             body: body.clone(),
         }));
 
@@ -265,6 +286,9 @@ impl WalkerEvaluator {
             if self.break_hit {
                 self.break_hit = false;
                 break;
+            }
+            if self.continue_hit {
+                self.continue_hit = false;
             }
 
             let cond_value = self.evaluate_expression(cond)?;
@@ -332,6 +356,10 @@ impl WalkerEvaluator {
         let mut last_value = TrackedValue::from(Value::Nil);
         for stmt in statements {
             last_value = self.execute_statement(stmt)?;
+
+            if self.break_hit || self.return_hit || self.continue_hit {
+                break;
+            }
         }
 
         // Pop the scope
@@ -757,25 +785,12 @@ impl WalkerEvaluator {
                         for (i, param) in params.iter().enumerate() {
                             let (param_name, param_type) = param;
 
-                            if i >= arguments.len() {
-                                self.error(
-                                    callee.span,
-                                    format!(
-                                        "not enough arguments provided for function '{}': expected {}, found {}",
-                                        name,
-                                        params.len(),
-                                        arguments.len()
-                                    )
-                                );
-                                return Err(());
-                            }
-
                             let arg_expr = &arguments[i];
                             let arg_value = self.evaluate_expression(arg_expr)?;
 
                             // Check type compatibility
                             if let Some(expected_type) = param_type {
-                                if arg_value.get_type() != *expected_type {
+                                if arg_value.get_type() != *expected_type && *expected_type != Type::Any {
                                     self.error(
                                         arg_expr.span, 
                                         format!(
@@ -800,6 +815,12 @@ impl WalkerEvaluator {
 
                         // Execute the body
                         let last_value = self.execute_statement(&body)?;
+
+                        if self.return_hit {
+                            self.return_hit = false;
+                            // we can return the value immediately without popping the scope
+                            return Ok(last_value);
+                        }
 
                         // Pop the scope
                         self.env = previous;

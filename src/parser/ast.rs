@@ -70,14 +70,15 @@ pub enum StmtKind {
         type_annotation: Option<Type>, 
         initializer: Box<Expr> 
     },
-    // Break,
-    // Continue,
+    Break,
+    Continue,
     FuncDeclaration { 
         name: Symbol, // Identifier
         params: Vec<(Symbol, Option<Type>)>,  // Identifier, optional type annotation
         return_type: Option<Type>, // Optional return type annotation
         body: Box<Stmt> // Block
     },
+    Return { value: Box<Expr> },
 }
 
 

@@ -1,0 +1,12 @@
+# expect: 13
+let a = 0
+let b = 10
+while a < b do
+    print(a)
+    if a == 3 do
+        a = a + 10
+        continue
+    end
+    a = a + 1
+end
+a

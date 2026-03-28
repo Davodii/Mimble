@@ -1,0 +1,6 @@
+# expect: 10
+func test() do
+    return 5
+end
+
+test() + test()
