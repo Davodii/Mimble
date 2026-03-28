@@ -1,7 +1,6 @@
 use crate::{common::{Symbol, Type}, parser::{LiteralValue, Stmt}, stdlib::NativeFn};
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-#[serde(tag = "kind", content = "value")]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DataSource {
     /// A standalone variable (e.g. let x = ...)
     Variable(Symbol),
@@ -30,21 +29,18 @@ pub enum DataSource {
     None, // or Unknown
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TrackedValue {
     pub value: Value,
     pub source: DataSource,
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-#[serde(tag = "kind", content = "value")]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Integer(i64),
     Float(f64),
     String(String),
     Boolean(bool),
-    #[serde(rename_all = "camelCase")]
     Array {
         id: usize,
         elements: Vec<TrackedValue>,
@@ -54,13 +50,12 @@ pub enum Value {
     Nil,
 }
 
-#[derive(Clone, serde::Serialize)]
-#[serde(tag = "kind", content = "value")]
+#[derive(Clone)]
 pub enum FunctionType {
     Native {
         name: Symbol,
+        args: Vec<Type>,
         return_type: Type,
-        #[serde(skip)]
         func: NativeFn,
     },
     /// Function defined in mimble code
@@ -68,7 +63,6 @@ pub enum FunctionType {
         name: Symbol,
         return_type: Type,
         params: Vec<(Symbol, Option<Type>)>,
-        #[serde(skip)]
         body: Box<Stmt>,
     }
 }
@@ -135,8 +129,14 @@ impl TrackedValue {
             Value::Array { id: _, elements: _, element_type } => Type::Array(Box::new(element_type.clone())),
             Value::Function(function_type) => {
                 match function_type {
-                    FunctionType::Native { name: _, return_type, func: _ } => return_type.clone(),
-                    FunctionType::User { name: _, params: _, body: _, return_type } => return_type.clone(),
+                    FunctionType::Native { name: _ , args, return_type, func: _ } => Type::Function { 
+                        param_types: args.clone(), 
+                        return_type: return_type.clone().into() 
+                    },
+                    FunctionType::User { name: _, params, body: _, return_type } => Type::Function { 
+                        param_types: params.iter().map(|(_, t)| t.clone().unwrap_or(Type::Any)).collect(),
+                        return_type: return_type.clone().into()
+                    },
                     // _ => todo!(),
                 }
             },
@@ -179,7 +179,7 @@ impl std::fmt::Display for Value {
                     },
                 }
             },
-            _ => todo!(),
+            // _ => todo!(),
         }
     }
 }

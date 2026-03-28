@@ -1,0 +1,6 @@
+# error: too many arguments
+func some(a) do
+    print(a)
+end
+
+some(5, 10)

@@ -7,6 +7,8 @@ pub enum Type {
     Array(Box<Type>),
     Function { param_types: Vec<Type>, return_type: Box<Type> },
     Nil,
+    Any, // Used for native functions that can accept any type of argument (e.g. print)
+    // Undefined, // Used for variables that are declared but not yet assigned a value
 }
 
 impl std::fmt::Display for Type {
@@ -22,6 +24,7 @@ impl std::fmt::Display for Type {
                 write!(f, "function({}) -> {}", params, return_type)
             }
             Type::Nil => write!(f, "nil"),
+            Type::Any => write!(f, "any"),
             // Type::Undefined => write!(f, "undefined"),
         }
     }

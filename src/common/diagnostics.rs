@@ -54,7 +54,7 @@ impl DiagnosticsSink {
 
     pub fn format_diagnostic(&self, diag: &Diagnostic, source: &str) -> String {
         let line_num = source[..diag.span.start].lines().count();
-        let line_num = if line_num == 0 { 0 } else { line_num - 1 };
+        // let line_num = if line_num == 0 { 0 } else { line_num - 1 };
         let line_text = source.lines().nth(line_num).unwrap_or("");
 
         let col = diag.span.column.saturating_sub(1);
@@ -64,7 +64,7 @@ impl DiagnosticsSink {
 
         format!(
             "Error on line {line_num}\n {line_text}\n {padding}^--- {msg}",
-            line_num = line_num,
+            line_num = line_num + 1, // Display line numbers starting from 1
             line_text = line_text,
             padding = padding,
             msg = diag.message,

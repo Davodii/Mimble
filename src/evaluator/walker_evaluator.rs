@@ -232,7 +232,7 @@ impl WalkerEvaluator {
         body: &Box<Stmt>
     ) -> Result<TrackedValue, ()> {
         // Add the parameters to the environment of the function body
-        for (ident, type_annotation) in params {
+        for (ident, _type_annotation) in params {
             // We use Nil as a placeholder value since we only care about the type here
             self.env.borrow_mut().define(*ident, TrackedValue {
                 value: Value::Nil,
@@ -472,27 +472,27 @@ impl WalkerEvaluator {
         Ok(value)
     }
 
-    fn execute_function_declaration(
-        &mut self, 
-        name: &Symbol, 
-        params: &Vec<(Symbol, Option<Type>)>, 
-        return_type: &Option<Type>, 
-        body: &Box<Stmt>
-    ) -> Result<TrackedValue, ()> {
-        let value = TrackedValue::from(Value::Function(FunctionType::User { 
-            name: name.clone(),
-            params: params.clone(),
-            return_type: return_type.clone().unwrap_or(Type::Nil),
-            body: body.clone(),
-        }));
+    // fn execute_function_declaration(
+    //     &mut self, 
+    //     name: &Symbol, 
+    //     params: &Vec<(Symbol, Option<Type>)>, 
+    //     return_type: &Option<Type>, 
+    //     body: &Box<Stmt>
+    // ) -> Result<TrackedValue, ()> {
+    //     let value = TrackedValue::from(Value::Function(FunctionType::User { 
+    //         name: name.clone(),
+    //         params: params.clone(),
+    //         return_type: return_type.clone().unwrap_or(Type::Nil),
+    //         body: body.clone(),
+    //     }));
 
-        self.env.borrow_mut().define(
-            name.clone(), 
-            value.clone()
-        );
+    //     self.env.borrow_mut().define(
+    //         name.clone(), 
+    //         value.clone()
+    //     );
 
-        Ok(value)
-    }
+    //     Ok(value)
+    // }
 
     fn execute_variable_assignment_statement(
         &mut self, 
@@ -699,7 +699,7 @@ impl WalkerEvaluator {
 
             if let Some(TrackedValue { value: Value::Function(func_type), source: _ }) = func {
                 match func_type {
-                    FunctionType::Native { name: _, return_type: _,func } => {
+                    FunctionType::Native { name: _, args: _, return_type: _,func } => {
                         // Evaluate arguments
                         let mut arg_values = Vec::new();
                         for arg_expr in arguments {
@@ -745,7 +745,7 @@ impl WalkerEvaluator {
                         };
 
 
-                        let (name, return_type, params, body) = declaration;
+                        let (name, _return_type, params, body) = declaration;
 
                         // Save the current scope
                         let previous = self.env.clone();

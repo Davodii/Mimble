@@ -60,6 +60,8 @@ impl Environment {
     }
 
     pub fn define(&mut self, symbol: Symbol, value: TrackedValue) {
+        let value_type = value.get_type();
+        println!("Defining variable {:?} with type {:?}", symbol, value_type);
         self.types.insert(symbol, value.get_type());
         self.values.insert(symbol, value);
     }

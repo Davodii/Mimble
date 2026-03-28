@@ -1,0 +1,6 @@
+# expect: 5
+func five() do
+    5
+end
+
+five()

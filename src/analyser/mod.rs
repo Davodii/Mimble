@@ -247,6 +247,10 @@ impl Analyser {
         }
         for (arg, param_type) in arguments.iter().zip(param_types.iter()) {
             let arg_type = self.analyse_expression(arg)?;
+
+            if arg_type != Type::Any || param_type == &Type::Any {
+                continue; // skip type check if either the argument type or parameter type is "any"
+            }
             if arg_type != *param_type {
                 self.ctx.diagnostics.borrow_mut().report(
                     arg.span,
@@ -444,14 +448,16 @@ impl Analyser {
     }
 
     fn analyse_func_declaration(&mut self, name: &Symbol, params: &Vec<(Symbol, Option<Type>)>, return_type: &Option<Type>, body: &Stmt) -> Result<(), ()> {
-        // Declare the function in the current scope with a placeholder type (e.g. "function")
-        self.declare_variable(
-            name.clone(), 
-            Type::Function { 
-                param_types: Vec::new(), 
-                return_type: Box::new(Type::Nil) 
-            }
-        )?;
+        todo!();
+        
+        // // Declare the function in the current scope with a placeholder type (e.g. "function")
+        // self.declare_variable(
+        //     name.clone(), 
+        //     Type::Function { 
+        //         param_types: Vec::new(), 
+        //         return_type: Box::new(Type::Nil) 
+        //     }
+        // )?;
 
         // Analyse the function body in a new scope where the parameters are declared
         self.enter_scope();

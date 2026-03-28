@@ -24,11 +24,12 @@ impl GlobalsBuilder {
         }
     }
 
-    fn add_native(&mut self, name: &str, return_type: Type, func: NativeFn) {
+    fn add_native(&mut self, name: &str, args: Vec<Type>, return_type: Type, func: NativeFn) {
         let symbol = self.ctx.pool.borrow_mut().intern(name);
         let value = TrackedValue {
             value: Value::Function(FunctionType::Native {
                 name: symbol,
+                args,
                 return_type,
                 func,
             }),
@@ -38,21 +39,21 @@ impl GlobalsBuilder {
     }
 
     pub fn with_std_io(mut self) -> Self {
-        self.add_native("print", Type::Nil, Arc::new(|args| {
-            for arg in args {
-                print!("{} ", arg.value);
+        self.add_native("print", vec![Type::Any], Type::Nil, Arc::new(|args| {
+            if args.len() != 1 {
+                return Err(format!("Expected exactly 1 argument, got {}", args.len()));
             }
-            println!();
+            
+            println!("{}", args[0].value);
             Ok(TrackedValue::nil())
         }));
         self
     }
 
     pub fn with_array(mut self) -> Self {
-        // TODO: use the diagnostics system to report errors instead of returning Err
-        self.add_native("len", Type::Integer, Arc::new(|args| {
+        self.add_native("len", vec![Type::Array(Box::new(Type::Any))], Type::Integer, Arc::new(|args| {
             if args.len() != 1 {
-                return Err(format!("Expected 1 argument, got {}", args.len()));
+                return Err(format!("Expected exactly 1 argument, got {}", args.len()));
             }
             let element_type = args[0].get_type();
             match &args[0].value {
