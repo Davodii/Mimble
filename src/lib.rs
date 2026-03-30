@@ -8,10 +8,16 @@ pub mod evaluator;
 pub mod tracer;
 mod stdlib;
 
+
+
 use std::{cell::RefCell, rc::Rc};
 
 pub use common::DiagnosticsSink;
+pub use common::Symbol;                                                                               
+pub use common::Type;                                                                               
+pub use common::Severity;                                                                           
 
+  
 use crate::{common::context::Context, evaluator::{environment::Environment, value::Value}};
 
 pub struct Interpreter {
@@ -49,6 +55,10 @@ impl Interpreter {
 
     pub fn diagnotics(&self) -> Rc<RefCell<DiagnosticsSink>> {
         self.ctx.diagnostics.clone()
+    }
+
+    pub fn resolve_symbol(&self, symbol: common::Symbol) -> String {
+        self.ctx.pool.borrow().resolve(symbol).to_string()                                                
     }
 
     pub fn run(&mut self, code: &str) -> Result<Value, ()> {
