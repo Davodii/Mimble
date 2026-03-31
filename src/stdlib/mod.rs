@@ -44,7 +44,6 @@ impl GlobalsBuilder {
                 return Err(format!("Expected exactly 1 argument, got {}", args.len()));
             }
             
-            println!("{}", args[0].value);
             Ok(TrackedValue::nil())
         }));
         self
