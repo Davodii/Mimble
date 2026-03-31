@@ -61,6 +61,10 @@ impl Analyser {
         self.scopes.pop();
     }
 
+    fn resolve_symbol(&self, symbol: Symbol) -> String {
+        self.ctx.pool.borrow().resolve(symbol).to_string()
+    }
+
     fn declare_variable(&mut self, name: Symbol, ty: Type) -> Result<(), ()> {
         if let Some(scope) = self.scopes.last_mut() {
             if scope.contains_key(&name) {
@@ -117,7 +121,7 @@ impl Analyser {
                     // Variable not found
                     self.ctx.diagnostics.borrow_mut().report(
                         expr.span, 
-                        format!("Undefined variable: {}", symbol), // TODO: convert symbol to string
+                        format!("Undefined variable: {}", self.resolve_symbol(*symbol)),
                         Severity::Error);
                     Err(())
                 }
@@ -170,7 +174,7 @@ impl Analyser {
             // Variable not found
             self.ctx.diagnostics.borrow_mut().report(
                 expr.span, 
-                format!("Undefined variable: {}", name), // TODO: convert symbol to string
+                format!("Undefined variable: {}", self.resolve_symbol(*name)), // TODO: convert symbol to string
                 Severity::Error);
             Err(())
         }
@@ -387,7 +391,7 @@ impl Analyser {
         if cond_type != Type::Boolean {
             self.ctx.diagnostics.borrow_mut().report(
                 cond.span,
-                format!("Type error: expected boolean condition, found {}", cond_type), // TODO: convert
+                format!("Type error: expected boolean condition, found type {}", cond_type), // TODO: convert
                 Severity::Error);
             return Err(());
         }
