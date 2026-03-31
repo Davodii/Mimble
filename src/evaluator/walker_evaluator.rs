@@ -210,6 +210,10 @@ impl WalkerEvaluator {
         );
     }
 
+    fn resolve_symbol(&self, symbol: Symbol) -> String {
+        self.ctx.pool.borrow().resolve(symbol).to_string()
+    }
+
     fn execute_statement(&mut self, stmt: &Stmt) -> Result<TrackedValue, ()> {
         match &stmt.node {
             StmtKind::ExprStmt(expr) => self.evaluate_expression(&expr),
@@ -386,7 +390,7 @@ impl WalkerEvaluator {
                 } else {
                     self.error(
                         span, 
-                        format!("undefined variable '{}' found", self.ctx.pool.borrow().resolve(*name))
+                        format!("undefined variable '{}' found", self.resolve_symbol(*name))
                     );
                     Err(())
                 }
@@ -534,7 +538,7 @@ impl WalkerEvaluator {
                 span, 
                 format!(
                     "undefined variable '{}' found", 
-                    self.ctx.pool.borrow().resolve(*name)
+                    self.resolve_symbol(*name)
                 )
             );
             Err(())
@@ -683,7 +687,7 @@ impl WalkerEvaluator {
                         obj_expr.span, 
                         format!(
                             "undefined variable '{}' found", 
-                            self.ctx.pool.borrow().resolve(symbol)
+                            self.resolve_symbol(symbol)
                         )
                     );
                     return Err(());
@@ -739,14 +743,14 @@ impl WalkerEvaluator {
                             } else {
                                 self.error(
                                     callee.span,
-                                    format!("'{}' is not a function", name)
+                                    format!("'{}' is not a function", self.resolve_symbol(name))
                                 );
                                 return Err(());
                             }
                         } else {
                             self.error(
                                 callee.span,
-                                format!("undefined function '{}' called", name)
+                                format!("undefined function '{}' called", self.resolve_symbol(name))
                             );
                             return Err(());
                         };
@@ -774,7 +778,7 @@ impl WalkerEvaluator {
                                         arg_expr.span, 
                                         format!(
                                             "Type mismatch for parameter '{}': expected '{:?}', found '{:?}'",
-                                            param_name,
+                                            self.resolve_symbol(*param_name),
                                             expected_type,
                                             arg_value.get_type()
                                         )

@@ -547,7 +547,7 @@ impl Parser {
             None
         };
 
-        self.consume(TokenKind::Assign, "Expected '=' after in a 'let' statement")?;
+        self.consume(TokenKind::Assign, "Expected '=' after an identifier in a 'let' statement")?;
         let initializer = self.expression()?;
 
         let span = name_token.span.merge(initializer.span);
