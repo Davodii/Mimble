@@ -223,7 +223,7 @@ impl WalkerEvaluator {
             StmtKind::Block{ stmts: statements } => self.evaluate_block(statements),
             StmtKind::While { cond, body } => self.evaluate_while(cond, body),
             StmtKind::If { cond, then, else_branch } => {
-                self.evaluate_if(cond, then, else_branch)
+                self.evaluate_if(stmt.span, cond, then, else_branch)
             },
             StmtKind::FuncDeclaration { name , params , return_type , body  } => {
                 self.evaluate_function_declaration(name, params, return_type, body)
@@ -320,6 +320,7 @@ impl WalkerEvaluator {
 
     fn evaluate_if(
         &mut self, 
+        span: Span,
         cond: &Box<Expr>, 
         then_branch: &Box<Stmt>, 
         else_branch: &Option<Box<Stmt>>
@@ -337,7 +338,12 @@ impl WalkerEvaluator {
             }
         };
 
-        if condition {
+        self.emit(TraceEvent::BranchEnter { 
+            statement_id: span.start, // using the start of the span as a unique ID for the branch statement
+            condition_result: condition
+        });
+
+        let output = if condition {
             self.execute_statement(then_branch)
         } else {
             // TODO: handle else-if branches
@@ -346,7 +352,11 @@ impl WalkerEvaluator {
             } else {
                 Ok(TrackedValue::from(Value::Nil))
             }
-        }
+        };
+
+        self.emit(TraceEvent::BranchExit { statement_id: span.start });
+
+        output
     }
 
     fn evaluate_block(&mut self, statements: &Vec<Stmt>) -> Result<TrackedValue, ()>{

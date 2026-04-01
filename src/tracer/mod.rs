@@ -24,7 +24,16 @@ pub enum TraceEvent {
         right: DataSource,
         operator: String,
         result: bool,
-    }
+    },
+
+    BranchEnter {
+        statement_id: usize, // Unique ID for the branch statement (e.g., if, match arm)
+        condition_result: bool, // Result of the branch condition
+    },
+
+    BranchExit {
+        statement_id: usize, // Unique ID for the branch statement
+    },
 }
 
 pub trait Tracer {
