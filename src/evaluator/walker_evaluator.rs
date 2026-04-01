@@ -452,12 +452,24 @@ impl WalkerEvaluator {
         let left_val = self.evaluate_expression(left)?;
         let right_val = self.evaluate_expression(right)?;
 
+        
 
         let result_value = eval_binop(
             op.clone(), 
             left_val.value, 
             right_val.value
         )?;
+
+
+        if *op == TokenKind::LT || *op == TokenKind::LEQ || *op == TokenKind::GT || *op == TokenKind::GEQ || *op == TokenKind::EQ || *op == TokenKind::NEQ {
+            self.emit(TraceEvent::Compare { 
+                left: left_val.source.clone(), 
+                right: right_val.source.clone(), 
+                operator: format!("{}", &op),
+                result: matches!(result_value, Value::Boolean(true)),
+            });
+        }
+
         Ok(TrackedValue::from(result_value))
     }
 

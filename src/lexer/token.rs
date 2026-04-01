@@ -52,7 +52,13 @@ pub enum TokenKind {
 
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.kind {
+        write!(f, "{}", self.kind) // TODO: include span information in the display output
+    }
+}
+
+impl std::fmt::Display for TokenKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
             TokenKind::IntegerLiteral(n) => write!(f, "IntegerLiteral({})", n),
             TokenKind::FloatLiteral(n) => write!(f, "FloatLiteral({})", n),
             TokenKind::StringLiteral(_) => write!(f, "StringLiteral"),
@@ -94,7 +100,7 @@ impl std::fmt::Display for Token {
             TokenKind::Not => write!(f, "not"),
             TokenKind::Break => write!(f, "break"),
             TokenKind::Continue => write!(f, "continue"),
-            _ => write!(f, "{:?}", self.kind),
+            _ => write!(f, "{:?}", self),
         }
     }
 }
