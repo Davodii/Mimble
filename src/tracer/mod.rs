@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::evaluator::value::{DataSource, TrackedValue};
+use crate::{Symbol, evaluator::value::{DataSource, TrackedValue}};
 
 #[derive(Debug, Clone)]
 pub enum TraceEvent {
@@ -41,6 +41,17 @@ pub enum TraceEvent {
 
     ScopeExit {
         scope_id: usize, // Unique ID for the scope
+    },
+
+    FunctionCall {
+        call_id: usize, // Unique ID for the function call
+        function_name: Symbol,
+        args: Vec<TrackedValue>,
+    },
+
+    FunctionReturn {
+        call_id: usize, // Unique ID for the function call
+        return_value: TrackedValue,
     },
 }
 

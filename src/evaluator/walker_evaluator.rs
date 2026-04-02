@@ -148,6 +148,7 @@ pub struct WalkerEvaluator {
     break_hit: bool,
     return_hit: bool,
     continue_hit: bool,
+    function_call_id: usize,
 }
 impl WalkerEvaluator {
     pub fn new(
@@ -163,6 +164,7 @@ impl WalkerEvaluator {
             break_hit: false,
             return_hit: false,
             continue_hit: false,
+            function_call_id: 0,
         }
     }
 
@@ -193,6 +195,12 @@ impl WalkerEvaluator {
     fn new_uid(&mut self) -> usize {
         let id = self.next_uid;
         self.next_uid += 1;
+        id
+    }
+
+    fn new_function_call_id(&mut self) -> usize {
+        let id = self.function_call_id;
+        self.function_call_id += 1;
         id
     }
 
@@ -736,7 +744,7 @@ impl WalkerEvaluator {
 
             if let Some(TrackedValue { value: Value::Function(func_type), source: _ }) = func {
                 match func_type {
-                    FunctionType::Native { name: _, args: _, return_type: _,func } => {
+                    FunctionType::Native { name , args: _, return_type: _,func } => {
                         // Evaluate arguments
                         let mut arg_values = Vec::new();
                         for arg_expr in arguments {
@@ -744,8 +752,16 @@ impl WalkerEvaluator {
                             arg_values.push(arg_value);
                         }
 
+
+                        let call_id = self.new_function_call_id();
+                        self.emit(TraceEvent::FunctionCall { 
+                            call_id, 
+                            function_name: name, 
+                            args: arg_values.clone() 
+                        });
+
                         // Call the native function
-                        match func(arg_values) {
+                        let result = match func(arg_values) {
                             Ok(result) => Ok(result),
                             Err(err_message) => {
                                 self.error(
@@ -754,6 +770,16 @@ impl WalkerEvaluator {
                                 );
                                 Err(())
                             }
+                        };
+
+                        if let Ok(result_value) = &result {
+                            self.emit(TraceEvent::FunctionReturn { 
+                                call_id, 
+                                return_value: TrackedValue::from(result_value.clone())
+                            });
+                            return Ok(TrackedValue::from(result_value.clone()));
+                        } else {
+                            return Err(());
                         }
                     },
                     FunctionType::User { name , return_type: _, params: _, body: _ } => {
@@ -783,6 +809,21 @@ impl WalkerEvaluator {
 
 
                         let (_name, _return_type, params, body) = declaration;
+
+                        let call_id = self.new_function_call_id();
+                        let args = arguments.iter().map(|arg| {
+                            // we want to get the tracked value for each argument expression
+                            // this is a bit hacky but it allows us to get the source info for the argument expressions
+                            match self.evaluate_expression(arg) {
+                                Ok(val) => val,
+                                Err(_) => TrackedValue::from(Value::Nil), // in case of error, we just use a dummy value
+                            }
+                        }).collect();
+                        self.emit(TraceEvent::FunctionCall {
+                            call_id, 
+                            function_name: name, 
+                            args
+                        });
 
                         // Save the current scope
                         let previous = self.env.clone();
@@ -827,12 +868,15 @@ impl WalkerEvaluator {
 
                         if self.return_hit {
                             self.return_hit = false;
-                            // we can return the value immediately without popping the scope
-                            return Ok(last_value);
                         }
 
                         // Pop the scope
                         self.env = previous;
+
+                        self.emit(TraceEvent::FunctionReturn { 
+                            call_id, 
+                            return_value: last_value.clone()
+                        });
 
                         Ok(last_value)
                     },
