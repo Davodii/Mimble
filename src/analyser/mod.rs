@@ -67,10 +67,10 @@ impl Analyser {
 
     fn declare_variable(&mut self, name: Symbol, ty: Type) -> Result<(), ()> {
         if let Some(scope) = self.scopes.last_mut() {
-            if scope.contains_key(&name) {
-                // Variable already declared in this scope
-                return Err(());
-            }
+            // if scope.contains_key(&name) {
+            //     // Variable already declared in this scope
+            //     return Err(());
+            // }
             scope.insert(name, ty);
             Ok(())
         } else {
@@ -121,7 +121,7 @@ impl Analyser {
                     // Variable not found
                     self.ctx.diagnostics.borrow_mut().report(
                         expr.span, 
-                        format!("Undefined variable: {}", self.resolve_symbol(*symbol)),
+                        format!("Undefined variable: a {}", self.resolve_symbol(*symbol)),
                         Severity::Error);
                     Err(())
                 }
@@ -479,6 +479,12 @@ impl Analyser {
     fn analyse_func_declaration(&mut self, name: &Symbol, params: &Vec<(Symbol, Option<Type>)>, return_type: &Option<Type>, body: &Stmt) -> Result<(), ()> {
         self.current_function_return_type = return_type.clone();
         self.in_function = true;
+
+        // Declare the function in the current scope with a placeholder type (e.g. "function") so that it can be recursive
+        self.declare_variable(name.clone(), Type::Function { 
+            param_types: params.iter().map(|(_, t)| t.clone().unwrap_or(Type::Any)).collect(), 
+            return_type: Box::new(Type::Any) 
+        })?;
         
         // Analyse the function body in a new scope where the parameters are declared
         self.enter_scope();
@@ -490,6 +496,7 @@ impl Analyser {
 
         self.analyse_stmt(body)?;
         self.exit_scope();
+
 
         // After analysing the body, update the function's type in the current scope with the correct parameter and return types
         // Declare the function in the current scope with a placeholder type (e.g. "function")
