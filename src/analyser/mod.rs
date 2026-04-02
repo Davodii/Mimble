@@ -140,7 +140,7 @@ impl Analyser {
         for spanned in spanneds {
             let ty = self.analyse_expression(spanned)?;
             if let Some(ref element_type) = element_type {
-                if ty != *element_type {
+                if !ty.is_compatible_with(element_type) {
                     self.ctx.diagnostics.borrow_mut().report(
                         spanned.span,
                         format!("Type error: array elements must all have the same type, found {} and {}", ty, element_type), // TODO: convert types to strings
@@ -161,11 +161,11 @@ impl Analyser {
             let value_type = self.analyse_expression(value)?;
     
             // Check that the value type matches the variable type
-            if value_type == var_type {
+            if value_type.is_compatible_with(&var_type) {
                 Ok(var_type)
             } else {
                 self.ctx.diagnostics.borrow_mut().report(
-                    expr.span, 
+                    expr.span,
                     format!("Type error: cannot assign {} to variable of type {}", value_type, var_type), // TODO: convert types to strings
                     Severity::Error);
                 Err(())
@@ -183,7 +183,7 @@ impl Analyser {
     fn analyse_array_get(&mut self, array: &Expr, index: &Expr) -> Result<Type, ()> {
         // Analyse the index expression and check that it's an integer
         let index_type = self.analyse_expression(index)?;
-        if index_type != Type::Integer {
+        if !index_type.is_compatible_with(&Type::Integer) {
             self.ctx.diagnostics.borrow_mut().report(
                 index.span,
                 format!("Type error: array index must be an integer, found {}", index_type), // TODO: convert types to strings
@@ -193,6 +193,9 @@ impl Analyser {
 
         // Analyse the array expression and check that it's an array type
         let array_type = self.analyse_expression(array)?;
+        if array_type == Type::Any {
+            return Ok(Type::Any);
+        }
         if let Type::Array(element_type) = array_type {
             Ok((*element_type).clone())
         } else {
@@ -207,7 +210,7 @@ impl Analyser {
     fn analyse_array_set(&mut self, array: &Expr, index: &Expr, value: &Expr) -> Result<Type, ()> {
         // Analyse the index expression and check that it's an integer
         let index_type = self.analyse_expression(index)?;
-        if index_type != Type::Integer {
+        if !index_type.is_compatible_with(&Type::Integer) {
             self.ctx.diagnostics.borrow_mut().report(
                 index.span,
                 format!("Type error: array index must be an integer, found {}", index_type), // TODO: convert types to strings
@@ -217,10 +220,14 @@ impl Analyser {
 
         // Analyse the array expression and check that it's an array type
         let array_type = self.analyse_expression(array)?;
+        if array_type == Type::Any {
+            self.analyse_expression(value)?;
+            return Ok(Type::Any);
+        }
         if let Type::Array(element_type) = array_type {
             // Analyse the value expression and check that it matches the element type
             let value_type = self.analyse_expression(value)?;
-            if value_type == *element_type || (value_type == Type::Nil && *element_type != Type::Nil) {
+            if value_type.is_compatible_with(&element_type) || (value_type == Type::Nil && *element_type != Type::Nil) {
                 Ok(value_type)
             } else {
                 self.ctx.diagnostics.borrow_mut().report(
@@ -261,11 +268,7 @@ impl Analyser {
         }
         for (arg, param_type) in arguments.iter().zip(param_types.iter()) {
             let arg_type = self.analyse_expression(arg)?;
-
-            if arg_type != Type::Any || param_type == &Type::Any {
-                continue; // skip type check if either the argument type or parameter type is "any"
-            }
-            if arg_type != *param_type {
+            if !arg_type.is_compatible_with(param_type) {
                 self.ctx.diagnostics.borrow_mut().report(
                     arg.span,
                     format!("Type error: expected argument of type {}, found {}", param_type, arg_type),
@@ -284,7 +287,9 @@ impl Analyser {
 
         match op {
             TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash => {
-                if (left_type == Type::Integer || left_type == Type::Float) && (right_type == Type::Integer || right_type == Type::Float) {
+                if left_type == Type::Any || right_type == Type::Any {
+                    Ok(Type::Any)
+                } else if (left_type == Type::Integer || left_type == Type::Float) && (right_type == Type::Integer || right_type == Type::Float) {
                     // If either operand is a float, the result is a float
                     if left_type == Type::Float || right_type == Type::Float {
                         Ok(Type::Float)
@@ -300,7 +305,7 @@ impl Analyser {
                 }
             },
             TokenKind::EQ | TokenKind::NEQ => {
-                if left_type == right_type {
+                if left_type.is_compatible_with(&right_type) {
                     Ok(Type::Boolean)
                 } else {
                     self.ctx.diagnostics.borrow_mut().report(
@@ -311,7 +316,9 @@ impl Analyser {
                 }
             },
             TokenKind::LT | TokenKind::LEQ | TokenKind::GT | TokenKind::GEQ => {
-                if (left_type == Type::Integer || left_type == Type::Float) && (right_type == Type::Integer || right_type == Type::Float) {
+                if left_type == Type::Any || right_type == Type::Any
+                    || ((left_type == Type::Integer || left_type == Type::Float) && (right_type == Type::Integer || right_type == Type::Float))
+                {
                     Ok(Type::Boolean)
                 } else {
                     self.ctx.diagnostics.borrow_mut().report(
@@ -322,7 +329,9 @@ impl Analyser {
                 }
             },
             TokenKind::And | TokenKind::Or => {
-                if left_type == Type::Boolean && right_type == Type::Boolean {
+                if left_type == Type::Any || right_type == Type::Any
+                    || (left_type == Type::Boolean && right_type == Type::Boolean)
+                {
                     Ok(Type::Boolean)
                 } else {
                     self.ctx.diagnostics.borrow_mut().report(
@@ -348,22 +357,22 @@ impl Analyser {
         // Check that the operator is valid for the operand type and return the result type
         match op {
             crate::lexer::TokenKind::Plus | crate::lexer::TokenKind::Minus => {
-                if operand_type == Type::Integer || operand_type == Type::Float {
+                if operand_type == Type::Any || operand_type == Type::Integer || operand_type == Type::Float {
                     Ok(operand_type)
                 } else {
                     self.ctx.diagnostics.borrow_mut().report(
-                        expr.span, 
+                        expr.span,
                         format!("Type error: operator {:?} not supported for type {}", op, operand_type), // TODO: convert operator and type to strings
                         Severity::Error);
                     Err(())
                 }
             },
             crate::lexer::TokenKind::Not => {
-                if operand_type == Type::Boolean {
+                if operand_type == Type::Any || operand_type == Type::Boolean {
                     Ok(Type::Boolean)
                 } else {
                     self.ctx.diagnostics.borrow_mut().report(
-                        expr.span, 
+                        expr.span,
                         format!("Type error: operator {:?} not supported for type {}", op, operand_type), // TODO: convert operator and type to strings
                         Severity::Error);
                     Err(())
@@ -388,7 +397,7 @@ impl Analyser {
     fn analyse_if_stmt(&mut self, cond: &Expr, then: &Stmt, else_branch: &Option<Box<Stmt>>) -> Result<(), ()> {
         // Analyse the condition and check that it's a boolean
         let cond_type = self.analyse_expression(cond)?;
-        if cond_type != Type::Boolean {
+        if !cond_type.is_compatible_with(&Type::Boolean) {
             self.ctx.diagnostics.borrow_mut().report(
                 cond.span,
                 format!("Type error: expected boolean condition, found type {}", cond_type), // TODO: convert
@@ -410,7 +419,7 @@ impl Analyser {
     fn analyse_while_stmt(&mut self, cond: &Expr, body: &Stmt) -> Result<(), ()> {
         // Analyse the condition and check that it's a boolean
         let cond_type = self.analyse_expression(cond)?;
-        if cond_type != Type::Boolean {
+        if !cond_type.is_compatible_with(&Type::Boolean) {
             self.ctx.diagnostics.borrow_mut().report(
                 cond.span,
                 format!("Type error: expected boolean condition, found {}", cond_type), // TODO: convert
@@ -454,7 +463,7 @@ impl Analyser {
         // Declare the variable in the current scope
         let initializer_type = self.analyse_expression(initializer)?;
         if let Some(ref annotation) = *type_annotation {
-            if annotation != &initializer_type {
+            if !annotation.is_compatible_with(&initializer_type) {
                 self.ctx.diagnostics.borrow_mut().report(
                     initializer.span,
                     format!("Type error: expected {}, found {}", annotation, initializer_type),
@@ -508,7 +517,7 @@ impl Analyser {
 
         let ty = self.analyse_expression(value)?;
         if let Some(ref expected_type) = self.current_function_return_type {
-            if &ty != expected_type && expected_type != &Type::Any && ty != Type::Any {
+            if !ty.is_compatible_with(expected_type) {
                 self.ctx.diagnostics.borrow_mut().report(
                     value.span,
                     format!("Type error: expected {}, found {}", expected_type, ty),
