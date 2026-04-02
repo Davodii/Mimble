@@ -34,6 +34,14 @@ pub enum TraceEvent {
     BranchExit {
         statement_id: usize, // Unique ID for the branch statement
     },
+
+    ScopeEnter {
+        scope_id: usize, // Unique ID for the scope (e.g., function, block)
+    },
+
+    ScopeExit {
+        scope_id: usize, // Unique ID for the scope
+    },
 }
 
 pub trait Tracer {

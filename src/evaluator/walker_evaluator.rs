@@ -220,7 +220,7 @@ impl WalkerEvaluator {
             StmtKind::LetStmt { name, type_annotation, initializer } => {
                 self.execute_let_statement(name, type_annotation, initializer)
             },
-            StmtKind::Block{ stmts: statements } => self.evaluate_block(statements),
+            StmtKind::Block{ stmts: statements } => self.evaluate_block(stmt.span, statements),
             StmtKind::While { cond, body } => self.evaluate_while(cond, body),
             StmtKind::If { cond, then, else_branch } => {
                 self.evaluate_if(stmt.span, cond, then, else_branch)
@@ -359,12 +359,14 @@ impl WalkerEvaluator {
         output
     }
 
-    fn evaluate_block(&mut self, statements: &Vec<Stmt>) -> Result<TrackedValue, ()>{
+    fn evaluate_block(&mut self, span: Span, statements: &Vec<Stmt>) -> Result<TrackedValue, ()>{
         // Save the current scope
         let previous = self.env.clone();
 
         // Create a nested scope
         self.env = Environment::extend(previous.clone());
+
+        self.emit(TraceEvent::ScopeEnter { scope_id: span.start }); // using the start of the span as a unique ID for the scope
 
         // Execute the statements
         let mut last_value = TrackedValue::from(Value::Nil);
@@ -378,6 +380,8 @@ impl WalkerEvaluator {
 
         // Pop the scope
         self.env = previous;
+
+        self.emit(TraceEvent::ScopeExit { scope_id: span.start });
 
         Ok(last_value)
     }    
