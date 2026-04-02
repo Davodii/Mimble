@@ -39,7 +39,7 @@ pub enum TraceEvent {
         scope_id: usize, // Unique ID for the scope (e.g., function, block)
     },
 
-    ScopeExit {
+    ScopeExited {
         scope_id: usize, // Unique ID for the scope
     },
 }

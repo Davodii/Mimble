@@ -381,7 +381,7 @@ impl WalkerEvaluator {
         // Pop the scope
         self.env = previous;
 
-        self.emit(TraceEvent::ScopeExit { scope_id: span.start });
+        self.emit(TraceEvent::ScopeExited { scope_id: span.start });
 
         Ok(last_value)
     }    
